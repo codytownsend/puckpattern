@@ -8,7 +8,7 @@ import {
   Divider, 
   IconButton, 
   List, 
-  ListItem, 
+  ListItemButton, 
   ListItemIcon, 
   ListItemText,
   useTheme,
@@ -106,7 +106,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             edge="start"
             sx={{
               marginRight: 5,
-              ...(sidebarOpen && { display: 'none' }),
+              ...(sidebarOpen ? { display: 'none' } : {}),
             }}
           >
             <MenuIcon />
@@ -129,7 +129,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         }}
         variant="persistent"
         anchor="left"
-        open={sidebarOpen}
+        open={Boolean(sidebarOpen)}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', padding: theme.spacing(0, 1), ...theme.mixins.toolbar, justifyContent: 'flex-end' }}>
           <Typography variant="h6" sx={{ flexGrow: 1, padding: theme.spacing(0, 2) }}>
@@ -142,8 +142,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <Divider sx={{ backgroundColor: theme.palette.grey[700] }} />
         <List>
           {menuItems.map((item) => (
-            <ListItem 
-              button 
+            <ListItemButton
               key={item.text} 
               onClick={() => navigate(item.path)}
               selected={location.pathname === item.path}
@@ -163,11 +162,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 {item.icon}
               </ListItemIcon>
               <ListItemText primary={item.text} />
-            </ListItem>
+            </ListItemButton>
           ))}
         </List>
       </Drawer>
-      <Main open={sidebarOpen}>
+      <Main open={Boolean(sidebarOpen)}>
         <Box sx={{ height: { xs: 56, sm: 64 } }} /> {/* Toolbar spacer */}
         <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
           {children}
