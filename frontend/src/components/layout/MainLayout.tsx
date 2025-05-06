@@ -20,18 +20,9 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectSidebarOpen, setSidebarOpen } from '../../store/slices/uiSlice';
-import MenuIcon from '@mui/icons-material/Menu';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import BarChartIcon from '@mui/icons-material/BarChart';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
-import PeopleIcon from '@mui/icons-material/People';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import SportsSoccerIcon from '@mui/icons-material/SportsSoccer';
-import SettingsIcon from '@mui/icons-material/Settings';
-import HelpIcon from '@mui/icons-material/Help';
 import { colors } from '../../styles/theme';
+
+// Remove all icon imports
 
 const drawerWidth = 240;
 
@@ -42,7 +33,6 @@ interface MainLayoutProps {
 interface NavItem {
   text: string;
   path: string;
-  icon: React.ReactNode;
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
@@ -64,16 +54,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     dispatch(setSidebarOpen(!sidebarOpen));
   };
 
+  // Simplified navigation without icons
   const navItems: NavItem[] = [
-    { text: 'Dashboard', path: '/', icon: <DashboardIcon /> },
-    { text: 'Shot & Chance Map', path: '/shots', icon: <BarChartIcon /> },
-    { text: 'Power Play Decoder', path: '/powerplay', icon: <AssessmentIcon /> },
-    { text: 'Team Strategy', path: '/team-strategy', icon: <CompareArrowsIcon /> },
-    { text: 'Player Intelligence', path: '/players', icon: <PeopleIcon /> },
-    { text: 'Transition Engine', path: '/transition', icon: <TrendingUpIcon /> },
-    { text: 'Game Analysis', path: '/games', icon: <BarChartIcon /> },
-    { text: 'System Fit', path: '/system-fit', icon: <SportsSoccerIcon /> },
-    { text: 'Settings', path: '/settings', icon: <SettingsIcon /> }
+    { text: 'Dashboard', path: '/' },
+    { text: 'Shot & Chance Map', path: '/shots' },
+    { text: 'Power Play Decoder', path: '/powerplay' },
+    { text: 'Team Strategy', path: '/team-strategy' },
+    { text: 'Player Intelligence', path: '/players' },
+    { text: 'Transition Engine', path: '/transition' },
+    { text: 'Game Analysis', path: '/games' },
+    { text: 'System Fit', path: '/system-fit' },
+    { text: 'Settings', path: '/settings' }
   ];
 
   // Determine if a nav item is active
@@ -97,7 +88,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <Typography variant="h6" color="white">PuckPattern</Typography>
         {isMobile && (
           <IconButton onClick={handleDrawerToggle} sx={{ color: 'white' }}>
-            <ChevronLeftIcon />
+            {/* Remove icon */}
           </IconButton>
         )}
       </Box>
@@ -105,6 +96,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       <List sx={{ px: 1 }}>
         {navItems.map((item) => {
           const isActive = isPathActive(item.path);
+          
           return (
             <ListItemButton
               key={item.text}
@@ -129,9 +121,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 }
               }}
             >
-              <ListItemIcon sx={{ color: isActive ? theme.palette.primary.light : 'white', minWidth: '40px' }}>
-                {item.icon}
-              </ListItemIcon>
               <ListItemText 
                 primary={item.text} 
                 sx={{ 
@@ -186,14 +175,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             onClick={handleDrawerToggle}
             sx={{ mr: 2, display: { sm: sidebarOpen ? 'none' : 'block' } }}
           >
-            <MenuIcon />
+            {/* Remove icon */}
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {navItems.find(item => isPathActive(item.path))?.text || 'PuckPattern'}
           </Typography>
           <Tooltip title="Help">
             <IconButton color="inherit">
-              <HelpIcon />
+              {/* Remove icon */}
             </IconButton>
           </Tooltip>
         </Toolbar>
