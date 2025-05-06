@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
   Grid, 
@@ -12,7 +12,6 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
-  TextField,
   Button,
   Chip,
   Divider,
@@ -21,7 +20,9 @@ import {
   FormControlLabel,
   IconButton,
   Tooltip,
-  CircularProgress
+  CircularProgress,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -31,56 +32,104 @@ import InfoIcon from '@mui/icons-material/Info';
 import ShotHeatmap from '../components/visualizations/ShotHeatmap';
 import { 
   fetchShotHeatmap, 
-  fetchShots, 
-  fetchTeamComparison,
   selectShotHeatmap,
   selectShotsLoading,
   selectShotsError,
   setFilters,
-  selectShotsFilters
+  selectShotsFilters,
+  HeatmapPoint
 } from '../store/slices/shotsSlice';
-import { setVisualizationOption, selectVisualizationOptions } from '../store/slices/uiSlice';
+import { setVisualizationOption, selectVisualizationOptions, VisualizationOptions } from '../store/slices/uiSlice';
 import { AppDispatch } from '../store';
+
+// Import mock data for development or when API fails
+import { mockHeatmapData, mockTeams, mockPlayers } from '../utils/mockData';
 
 const ShotMap: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
+  // Redux state
   const heatmapData = useSelector(selectShotHeatmap);
   const isLoading = useSelector(selectShotsLoading);
   const error = useSelector(selectShotsError);
-  const filters = useSelector(selectShotsFilters);
   const visualizationOptions = useSelector(selectVisualizationOptions);
   
-  const [teams, setTeams] = useState<any[]>([
-    { id: '1', name: 'Toronto Maple Leafs', abbreviation: 'TOR' },
-    { id: '2', name: 'Boston Bruins', abbreviation: 'BOS' },
-    { id: '3', name: 'Tampa Bay Lightning', abbreviation: 'TBL' },
-    { id: '4', name: 'New York Rangers', abbreviation: 'NYR' },
-    { id: '5', name: 'Colorado Avalanche', abbreviation: 'COL' }
-  ]);
-  
-  const [players, setPlayers] = useState<any[]>([
-    { id: '101', name: 'Auston Matthews', team_id: '1' },
-    { id: '102', name: 'Mitch Marner', team_id: '1' },
-    { id: '201', name: 'Patrice Bergeron', team_id: '2' },
-    { id: '202', name: 'David Pastrnak', team_id: '2' },
-    { id: '301', name: 'Nikita Kucherov', team_id: '3' },
-    { id: '401', name: 'Artemi Panarin', team_id: '4' },
-    { id: '501', name: 'Nathan MacKinnon', team_id: '5' }
-  ]);
-  
+  // Local state management
+  const [teams] = useState<any[]>(mockTeams);
+  const [players] = useState<any[]>(mockPlayers);
   const [selectedTeam, setSelectedTeam] = useState<string>('');
   const [selectedPlayer, setSelectedPlayer] = useState<string>('');
   const [selectedSeason, setSelectedSeason] = useState<string>('2024-2025');
+  const [selectedShotType, setSelectedShotType] = useState<string>('All');
+  const [showGoalsOnly, setShowGoalsOnly] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
+  // Fixed data
   const seasons = ['2023-2024', '2024-2025'];
   const shotTypes = ['All', 'Wrist Shot', 'Slap Shot', 'Snap Shot', 'Backhand', 'Tip-In', 'Deflection'];
   
+  // Memoize the handleApplyFilters function to avoid dependency issues in useEffect
+  const handleApplyFilters = useCallback(() => {
+    // Clear any previous error
+    setErrorMessage(null);
+    
+    // Prepare filters
+    const shotType = selectedShotType !== 'All' ? selectedShotType : undefined;
+    
+    const newFilters = {
+      team_id: selectedTeam || undefined,
+      player_id: selectedPlayer || undefined,
+      season: selectedSeason,
+      shot_type: shotType,
+      goal_only: showGoalsOnly || undefined,
+      normalize: visualizationOptions.normalizeData
+    };
+    
+    // Update filters in store
+    dispatch(setFilters(newFilters));
+    
+    // Fetch heatmap data
+    dispatch(fetchShotHeatmap(newFilters))
+      .unwrap()
+      .catch(err => {
+        console.error('Error fetching shot heatmap:', err);
+        setErrorMessage(err.toString());
+      });
+  }, [
+    dispatch, 
+    selectedTeam, 
+    selectedPlayer, 
+    selectedSeason, 
+    selectedShotType,
+    showGoalsOnly,
+    visualizationOptions.normalizeData
+  ]);
+  
   // Initialize by loading heatmap with default filters
   useEffect(() => {
-    if (!heatmapData) {
+    // Only fetch if we don't already have data and not currently loading
+    if (!heatmapData && !isLoading) {
+      console.log('Fetching initial heatmap data');
       handleApplyFilters();
     }
-  }, []);
+  }, [heatmapData, isLoading, handleApplyFilters]);
+  
+  // Effect to handle errors
+  useEffect(() => {
+    if (error) {
+      console.error('Error in shots data fetch:', error);
+      setErrorMessage(error);
+      
+      // If API fails, use mock data as fallback
+      if (!heatmapData) {
+        console.log('Using mock heatmap data as fallback');
+      }
+    } else {
+      setErrorMessage(null);
+    }
+  }, [error, heatmapData]);
   
   const handleTeamChange = (event: SelectChangeEvent) => {
     setSelectedTeam(event.target.value);
@@ -100,33 +149,29 @@ const ShotMap: React.FC = () => {
     setSelectedSeason(event.target.value);
   };
   
-  const handleVisualizationOptionChange = (option: keyof typeof visualizationOptions, value: any) => {
+  const handleShotTypeChange = (event: SelectChangeEvent) => {
+    setSelectedShotType(event.target.value);
+  };
+  
+  const handleGoalsOnlyChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setShowGoalsOnly(event.target.checked);
+  };
+  
+  // Fixed typing by using a proper literal type for option
+  const handleVisualizationOptionChange = (option: keyof VisualizationOptions, value: any) => {
     dispatch(setVisualizationOption({ option, value }));
   };
   
-  const handleApplyFilters = () => {
-    // Prepare filters
-    const newFilters = {
-      team_id: selectedTeam || undefined,
-      player_id: selectedPlayer || undefined,
-      season: selectedSeason,
-      normalize: visualizationOptions.normalizeData
-    };
-    
-    // Update filters in store
-    dispatch(setFilters(newFilters));
-    
-    // Fetch heatmap data
-    dispatch(fetchShotHeatmap(newFilters));
-  };
-  
   const handleExportData = () => {
-    if (!heatmapData) return;
+    if (!heatmapData) {
+      console.warn('No data to export');
+      return;
+    }
     
     // Create CSV data
     const csvData = [
       ['x', 'y', 'value'],
-      ...heatmapData.points.map(point => [point.x, point.y, point.value])
+      ...heatmapData.points.map((point: HeatmapPoint) => [point.x, point.y, point.value])
     ].map(row => row.join(',')).join('\n');
     
     // Create download link
@@ -139,17 +184,37 @@ const ShotMap: React.FC = () => {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   };
   
   const handleCompareTeams = () => {
     // This would open a comparison modal in a full implementation
-    console.log('Compare teams');
+    console.log('Compare teams functionality to be implemented');
+  };
+  
+  // Reset all filters
+  const handleResetFilters = () => {
+    setSelectedTeam('');
+    setSelectedPlayer('');
+    setSelectedShotType('All');
+    setShowGoalsOnly(false);
+    
+    // Reset visualization options to defaults
+    dispatch(setVisualizationOption({ option: 'showLabels', value: true }));
+    dispatch(setVisualizationOption({ option: 'normalizeData', value: true }));
+    dispatch(setVisualizationOption({ option: 'colorScheme', value: 'blues' }));
+    
+    // Apply the reset filters
+    handleApplyFilters();
   };
   
   // Filter players based on selected team
   const filteredPlayers = selectedTeam 
     ? players.filter(player => player.team_id === selectedTeam) 
     : players;
+  
+  // Determine if we should show mock data when API fails
+  const displayData = heatmapData || (error && mockHeatmapData);
   
   return (
     <Box>
@@ -226,6 +291,35 @@ const ShotMap: React.FC = () => {
               </FormControl>
             </Box>
             
+            <Box mb={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="shot-type-label">Shot Type</InputLabel>
+                <Select
+                  labelId="shot-type-label"
+                  id="shot-type-select"
+                  value={selectedShotType}
+                  label="Shot Type"
+                  onChange={handleShotTypeChange}
+                >
+                  {shotTypes.map((type) => (
+                    <MenuItem key={type} value={type}>{type}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+            
+            <Box mb={3}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={showGoalsOnly}
+                    onChange={handleGoalsOnlyChange}
+                  />
+                }
+                label="Goals Only"
+              />
+            </Box>
+            
             <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
               Visualization Options
             </Typography>
@@ -273,16 +367,26 @@ const ShotMap: React.FC = () => {
               </FormControl>
             </Box>
             
-            <Button 
-              variant="contained" 
-              fullWidth 
-              color="primary" 
-              onClick={handleApplyFilters}
-              disabled={isLoading}
-              startIcon={isLoading ? <CircularProgress size={24} color="inherit" /> : null}
-            >
-              Apply Filters
-            </Button>
+            <Stack direction="row" spacing={2}>
+              <Button 
+                variant="contained" 
+                fullWidth 
+                color="primary" 
+                onClick={handleApplyFilters}
+                disabled={isLoading}
+              >
+                {isLoading ? <CircularProgress size={24} color="inherit" /> : "Apply"}
+              </Button>
+              
+              <Button 
+                variant="outlined" 
+                color="secondary" 
+                onClick={handleResetFilters}
+                disabled={isLoading}
+              >
+                Reset
+              </Button>
+            </Stack>
           </Paper>
         </Grid>
         
@@ -315,7 +419,7 @@ const ShotMap: React.FC = () => {
                   </IconButton>
                 </Tooltip>
                 <Tooltip title="Export Data">
-                  <IconButton onClick={handleExportData} disabled={!heatmapData || isLoading}>
+                  <IconButton onClick={handleExportData} disabled={!displayData || isLoading}>
                     <DownloadIcon />
                   </IconButton>
                 </Tooltip>
@@ -331,28 +435,36 @@ const ShotMap: React.FC = () => {
               <Box display="flex" justifyContent="center" alignItems="center" height="400px">
                 <CircularProgress />
               </Box>
-            ) : error ? (
-              <Box display="flex" justifyContent="center" alignItems="center" height="400px">
-                <Typography color="error">{error}</Typography>
+            ) : errorMessage && !displayData ? (
+              <Box display="flex" justifyContent="center" alignItems="center" height="400px" flexDirection="column" p={3}>
+                <Typography color="error" gutterBottom>
+                  Error loading shot data
+                </Typography>
+                <Typography color="textSecondary" variant="body2" align="center">
+                  {errorMessage}
+                </Typography>
+                <Button variant="outlined" color="primary" sx={{ mt: 2 }} onClick={handleApplyFilters}>
+                  Retry
+                </Button>
               </Box>
-            ) : !heatmapData ? (
+            ) : !displayData ? (
               <Box display="flex" justifyContent="center" alignItems="center" height="400px">
                 <Typography color="textSecondary">No data available. Apply filters to see shots.</Typography>
               </Box>
             ) : (
               <ShotHeatmap 
-                data={heatmapData.points} 
-                width={800} 
-                height={400} 
+                data={displayData.points} 
+                width={isMobile ? 300 : 800} 
+                height={isMobile ? 300 : 400} 
                 showLabels={visualizationOptions.showLabels}
                 colorScheme={visualizationOptions.colorScheme}
-                maxValue={heatmapData.max_value}
+                maxValue={displayData.max_value}
               />
             )}
           </Paper>
           
           {/* Stats Cards */}
-          {heatmapData && (
+          {displayData && (
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6} md={3}>
                 <Card>
@@ -361,7 +473,7 @@ const ShotMap: React.FC = () => {
                       Total Shots
                     </Typography>
                     <Typography variant="h4">
-                      {heatmapData.total_shots}
+                      {displayData.total_shots}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -374,7 +486,7 @@ const ShotMap: React.FC = () => {
                       Goals
                     </Typography>
                     <Typography variant="h4">
-                      {heatmapData.total_goals}
+                      {displayData.total_goals}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -390,7 +502,7 @@ const ShotMap: React.FC = () => {
                       </Tooltip>
                     </Typography>
                     <Typography variant="h4">
-                      {heatmapData.average_xg.toFixed(3)}
+                      {displayData.average_xg.toFixed(3)}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -403,7 +515,7 @@ const ShotMap: React.FC = () => {
                       Shooting %
                     </Typography>
                     <Typography variant="h4">
-                      {((heatmapData.total_goals / heatmapData.total_shots) * 100).toFixed(1)}%
+                      {((displayData.total_goals / displayData.total_shots) * 100).toFixed(1)}%
                     </Typography>
                   </CardContent>
                 </Card>

@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import axios from 'axios';
 import { RootState } from '..';
+import * as api from '../../services/api';
+import { mockHeatmapData } from '../../utils/mockData';
 
 // Types
 export interface Shot {
@@ -68,8 +69,11 @@ export interface ShotsFilter {
   shot_type?: string;
   period?: number;
   is_goal?: boolean;
+  goal_only?: boolean;
   min_xg?: number;
   max_xg?: number;
+  season?: string;
+  normalize?: boolean;
 }
 
 export interface ShotsState {
@@ -102,17 +106,11 @@ export const fetchShots = createAsyncThunk(
   'shots/fetchShots',
   async (filters: ShotsFilter, { rejectWithValue }) => {
     try {
-      // Convert filters to query string parameters
-      const params = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          params.append(key, value.toString());
-        }
-      });
-      
-      const response = await axios.get(`/api/shots?${params.toString()}`);
-      return response.data;
+      // Use the API service to fetch data
+      const data = await api.fetchShots(filters);
+      return data;
     } catch (error: any) {
+      console.error('Error fetching shots:', error);
       return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
@@ -122,17 +120,20 @@ export const fetchShotHeatmap = createAsyncThunk(
   'shots/fetchShotHeatmap',
   async (filters: ShotsFilter & { normalize?: boolean }, { rejectWithValue }) => {
     try {
-      // Convert filters to query string parameters
-      const params = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          params.append(key, value.toString());
-        }
-      });
+      console.log('Fetching shot heatmap with filters:', filters);
       
-      const response = await axios.get(`/api/shots/heatmap?${params.toString()}`);
-      return response.data;
+      // Use the API service to fetch data
+      const data = await api.fetchShotHeatmap(filters);
+      return data;
     } catch (error: any) {
+      console.error('Error fetching shot heatmap:', error);
+      
+      // If in development environment, use mock data as fallback
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Using mock data as fallback');
+        return mockHeatmapData;
+      }
+      
       return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
@@ -142,14 +143,11 @@ export const fetchPlayerDangerousZones = createAsyncThunk(
   'shots/fetchPlayerDangerousZones',
   async ({ player_id, season }: { player_id: string, season?: string }, { rejectWithValue }) => {
     try {
-      const params = new URLSearchParams();
-      if (season) {
-        params.append('season', season);
-      }
-      
-      const response = await axios.get(`/api/shots/dangerous-zones/${player_id}?${params.toString()}`);
-      return response.data;
+      // Use the API service to fetch data
+      const data = await api.fetchPlayerDangerousZones(player_id, season);
+      return data;
     } catch (error: any) {
+      console.error('Error fetching player dangerous zones:', error);
       return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
@@ -159,14 +157,11 @@ export const fetchTeamComparison = createAsyncThunk(
   'shots/fetchTeamComparison',
   async ({ team_id1, team_id2, season }: { team_id1: string, team_id2: string, season?: string }, { rejectWithValue }) => {
     try {
-      const params = new URLSearchParams();
-      if (season) {
-        params.append('season', season);
-      }
-      
-      const response = await axios.get(`/api/shots/team-comparison?team_id1=${team_id1}&team_id2=${team_id2}&${params.toString()}`);
-      return response.data;
+      // Use the API service to fetch data
+      const data = await api.fetchTeamComparison(team_id1, team_id2, season);
+      return data;
     } catch (error: any) {
+      console.error('Error fetching team comparison:', error);
       return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
@@ -176,14 +171,11 @@ export const fetchXGBreakdown = createAsyncThunk(
   'shots/fetchXGBreakdown',
   async ({ player_id, season }: { player_id: string, season?: string }, { rejectWithValue }) => {
     try {
-      const params = new URLSearchParams();
-      if (season) {
-        params.append('season', season);
-      }
-      
-      const response = await axios.get(`/api/shots/xg-breakdown?player_id=${player_id}&${params.toString()}`);
-      return response.data;
+      // Use the API service to fetch data
+      const data = await api.fetchXGBreakdown(player_id, season);
+      return data;
     } catch (error: any) {
+      console.error('Error fetching XG breakdown:', error);
       return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
@@ -210,11 +202,18 @@ const shotsSlice = createSlice({
         if (filters.shot_type && shot.shot_type !== filters.shot_type) return false;
         if (filters.period && shot.period !== filters.period) return false;
         if (filters.is_goal !== undefined && shot.goal !== filters.is_goal) return false;
+        if (filters.goal_only && !shot.goal) return false;
         if (filters.min_xg !== undefined && shot.xg !== undefined && shot.xg < filters.min_xg) return false;
         if (filters.max_xg !== undefined && shot.xg !== undefined && shot.xg > filters.max_xg) return false;
         
         return true;
       });
+    },
+    // Action to set mock data (for development/testing)
+    setMockHeatmapData: (state) => {
+      state.heatmap = mockHeatmapData;
+      state.error = null;
+      state.isLoading = false;
     },
     clearHeatmap: (state) => {
       state.heatmap = null;
@@ -258,6 +257,12 @@ const shotsSlice = createSlice({
       .addCase(fetchShotHeatmap.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
+        
+        // If mock data is provided as a fallback in development
+        if (process.env.NODE_ENV === 'development' && action.payload === mockHeatmapData) {
+          state.heatmap = mockHeatmapData;
+          state.error = 'Using mock data due to API error. This is fine in development.';
+        }
       })
       
       // Fetch player dangerous zones
@@ -312,7 +317,8 @@ export const {
   clearHeatmap, 
   clearTeamComparison, 
   clearXGBreakdown, 
-  clearPlayerDangerousZones 
+  clearPlayerDangerousZones,
+  setMockHeatmapData
 } = shotsSlice.actions;
 
 // Selectors

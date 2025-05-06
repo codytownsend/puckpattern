@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import * as d3 from 'd3';
 import styled from 'styled-components';
 import { Box, Typography, Paper, useTheme } from '@mui/material';
@@ -45,11 +45,22 @@ const ShotHeatmap: React.FC<ShotHeatmapProps> = ({
   // Get the color range based on the selected scheme
   const colorRange = colorSchemes[colorScheme] || colorSchemes.blues;
   
+  // Use a callback for onPointClick to avoid dependency issues
+  const handlePointClick = useCallback((d: HeatmapPoint, event: Event) => {
+    if (onPointClick) {
+      event.stopPropagation();
+      onPointClick(d);
+    }
+  }, [onPointClick]);
+  
   useEffect(() => {
     if (!data || data.length === 0 || !svgRef.current) return;
     
+    // Store a reference to the SVG element for cleanup
+    const svgNode = svgRef.current;
+    
     // Clear any previous SVG content
-    d3.select(svgRef.current).selectAll('*').remove();
+    d3.select(svgNode).selectAll('*').remove();
     
     // Set up SVG and margins
     const margin = { top: 20, right: 30, bottom: 40, left: 50 };
@@ -58,7 +69,7 @@ const ShotHeatmap: React.FC<ShotHeatmapProps> = ({
     
     // Create SVG
     const svg = d3
-      .select(svgRef.current)
+      .select(svgNode)
       .attr('width', width)
       .attr('height', height)
       .append('g')
@@ -125,35 +136,52 @@ const ShotHeatmap: React.FC<ShotHeatmapProps> = ({
       .attr('stroke', theme.palette.primary.light)
       .attr('stroke-width', 2);
     
-    // Draw heat points
-    svg
+    // Draw heat points - properly typed with HeatmapPoint[]
+    const heatPoints = svg
       .selectAll('.heat-point')
-      .data(data)
+      .data<HeatmapPoint>(data)
       .enter()
       .append('circle')
       .attr('class', 'heat-point')
       .attr('cx', d => xScale(d.x))
       .attr('cy', d => yScale(d.y))
-      .attr('r', d => Math.sqrt(d.value) * 10)
+      .attr('r', d => Math.max(3, Math.sqrt(d.value) * 10)) // Ensure a minimum radius
       .attr('fill', d => colorScale(d.value))
       .attr('opacity', 0.7)
       .attr('stroke', d => d3.color(colorScale(d.value))?.darker().toString() || '')
       .attr('stroke-width', 1)
-      .style('cursor', 'pointer')
-      .on('click', (event, d) => {
+      .style('cursor', 'pointer');
+    
+    // Add event handlers
+    heatPoints
+      .on('click', function(event, d: HeatmapPoint) {
         if (onPointClick) {
+          event.stopPropagation();
           onPointClick(d);
         }
       })
-      .on('mouseover', function() {
+      .on('mouseover', function(event, d: HeatmapPoint) {
         d3.select(this)
           .attr('opacity', 1)
-          .attr('stroke-width', 2);
+          .attr('stroke-width', 2)
+          .attr('r', Math.max(5, Math.sqrt(d.value) * 12)); // Increase size on hover
+          
+        // Add tooltip (simplified version)
+        svg.append('text')
+          .attr('class', 'tooltip')
+          .attr('x', xScale(d.x) + 10)
+          .attr('y', yScale(d.y) - 10)
+          .attr('fill', theme.palette.text.primary)
+          .text(`Value: ${d.value.toFixed(2)}`);
       })
-      .on('mouseout', function() {
+      .on('mouseout', function(event, d: HeatmapPoint) {
         d3.select(this)
           .attr('opacity', 0.7)
-          .attr('stroke-width', 1);
+          .attr('stroke-width', 1)
+          .attr('r', Math.max(3, Math.sqrt(d.value) * 10)); // Reset size
+          
+        // Remove tooltip
+        svg.selectAll('.tooltip').remove();
       });
     
     // Add X axis
@@ -245,7 +273,7 @@ const ShotHeatmap: React.FC<ShotHeatmapProps> = ({
     
     const gradient = defs
       .append('linearGradient')
-      .attr('id', 'legend-gradient')
+      .attr('id', `legend-gradient-${Math.random().toString(36).substr(2, 9)}`) // Unique ID to avoid conflicts
       .attr('x1', '0%')
       .attr('y1', '0%')
       .attr('x2', '100%')
@@ -266,7 +294,7 @@ const ShotHeatmap: React.FC<ShotHeatmapProps> = ({
       .append('rect')
       .attr('width', legendWidth)
       .attr('height', legendHeight)
-      .style('fill', 'url(#legend-gradient)');
+      .style('fill', `url(#${gradient.attr('id')})`);
     
     // Add legend axis
     legend
@@ -283,7 +311,29 @@ const ShotHeatmap: React.FC<ShotHeatmapProps> = ({
       .style('fill', theme.palette.text.secondary)
       .text('Shot Density');
     
-  }, [data, width, height, showLabels, colorScheme, maxValue, colorRange, theme]);
+    // Return cleanup function to remove all D3 elements when component unmounts
+    return () => {
+      if (svgNode) {
+        d3.select(svgNode).selectAll('*').remove();
+      }
+    };
+  }, [data, width, height, showLabels, colorScheme, maxValue, colorRange, theme, handlePointClick]);
+  
+  // Handle empty data case
+  if (!data || data.length === 0) {
+    return (
+      <StyledPaper>
+        {title && (
+          <Typography variant="h6" gutterBottom>
+            {title}
+          </Typography>
+        )}
+        <Box display="flex" justifyContent="center" alignItems="center" height={height}>
+          <Typography color="textSecondary">No shot data available</Typography>
+        </Box>
+      </StyledPaper>
+    );
+  }
   
   return (
     <StyledPaper>
