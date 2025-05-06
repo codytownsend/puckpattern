@@ -38,15 +38,22 @@ class NHLDataFetcher:
             logger.error(f"Error fetching {url}: {e}")
             return {}
     
-    def get_teams(self) -> List[Dict[str, Any]]:
+    def get_all_teams(self) -> List[Dict[str, Any]]:
         """
-        Get all NHL teams.
-        
-        Returns:
-            List of team data
+        Returns all teams (active and historical) from the team endpoint.
         """
-        data = self._get("meta?teams=all")
-        return data.get("teams", [])
+        data = self._get("team")
+        return data.get("data", [])
+
+
+    def get_team_metadata(self) -> Dict[int, Dict[str, Any]]:
+        """
+        Returns a mapping of team_id → metadata from current standings.
+        """
+        data = self._get("https://api-web.nhle.com/v1/standings/now")  # Full URL override
+        if isinstance(data, list):
+            return {item["teamId"]: item for item in data}
+        return {}
     
     def get_team(self, team_abbrev: str) -> Dict[str, Any]:
         """
@@ -131,50 +138,43 @@ class NHLDataFetcher:
         
         return self._get(endpoint)
     
-    def get_schedule(self, date: str) -> Dict[str, Any]:
+    def get_schedule(self, date: str) -> List[Dict[str, Any]]:
         """
         Get game schedule for a specific date.
-        
+
         Args:
-            date: Date in format "YYYY-MM-DD"
-            
+            date (str): Date in format "YYYY-MM-DD"
+
         Returns:
-            List of scheduled games
+            List[Dict[str, Any]]: List of game dictionaries for the specified date
         """
-        return self._get(f"schedule/{date}")
+        data = self._get(f"schedule/{date}")
+        return data.get("dates", [{}])[0].get("games", [])
     
     def get_schedule_range(self, start_date: str, end_date: str) -> List[Dict[str, Any]]:
         """
         Get game schedule for a date range by iterating over dates.
-        
+
         Args:
-            start_date: Start date in format "YYYY-MM-DD"
-            end_date: End date in format "YYYY-MM-DD"
-            
+            start_date (str): Start date in format "YYYY-MM-DD"
+            end_date (str): End date in format "YYYY-MM-DD"
+
         Returns:
-            List of scheduled games for each date
+            List[Dict[str, Any]]: Flat list of game dictionaries across the date range
         """
-        # Parse dates
-        start = datetime.strptime(start_date, "%Y-%m-%d")
+        from datetime import datetime, timedelta
+
+        all_games: List[Dict[str, Any]] = []
+        current = datetime.strptime(start_date, "%Y-%m-%d")
         end = datetime.strptime(end_date, "%Y-%m-%d")
-        
-        # Initialize results
-        all_schedule_data = []
-        
-        # Iterate over dates
-        current_date = start
-        while current_date <= end:
-            date_str = current_date.strftime("%Y-%m-%d")
-            
-            # For general schedule, use the date endpoint
-            schedule_data = self._get(f"schedule/{date_str}")
-            if schedule_data:
-                all_schedule_data.append(schedule_data)
-            
-            # Move to next date
-            current_date += timedelta(days=1)
-        
-        return all_schedule_data
+
+        while current <= end:
+            date_str = current.strftime("%Y-%m-%d")
+            data = self._get(f"schedule/{date_str}")
+            all_games.extend(data.get("dates", [{}])[0].get("games", []))
+            current += timedelta(days=1)
+
+        return all_games
     
     def get_current_schedule(self) -> Dict[str, Any]:
         """

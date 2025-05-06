@@ -8,7 +8,7 @@ class Team(Base):
     __tablename__ = "teams"
     
     id = Column(Integer, primary_key=True, index=True)
-    team_id = Column(String, unique=True, index=True)
+    team_id = Column(Integer, unique=True, index=True)
     name = Column(String, index=True)
     abbreviation = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -27,7 +27,7 @@ class Player(Base):
     __tablename__ = "players"
     
     id = Column(Integer, primary_key=True, index=True)
-    player_id = Column(String, unique=True, index=True)
+    player_id = Column(Integer, unique=True, index=True)
     name = Column(String, index=True)
     team_id = Column(Integer, ForeignKey("teams.id"))
     position = Column(String)
@@ -50,7 +50,7 @@ class GameEvent(Base):
     __tablename__ = "game_events"
     
     id = Column(Integer, primary_key=True, index=True)
-    game_id = Column(String, index=True)
+    game_id = Column(String, ForeignKey("games.game_id"), index=True)
     event_type = Column(String, index=True)
     period = Column(Integer)
     time_elapsed = Column(Float)

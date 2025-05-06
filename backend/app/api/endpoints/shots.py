@@ -12,9 +12,9 @@ router = APIRouter()
 
 @router.get("/", response_model=List[ShotResponse])
 def get_shots(
-    game_id: Optional[str] = None,
-    player_id: Optional[str] = None,
-    team_id: Optional[str] = None,
+    game_id: Optional[int] = None,
+    player_id: Optional[int] = None,
+    team_id: Optional[int] = None,
     shot_type: Optional[str] = None,
     period: Optional[int] = None,
     is_goal: Optional[bool] = None,
@@ -53,9 +53,9 @@ def create_shot(
 
 @router.get("/heatmap", response_model=ShotHeatmapResponse)
 def get_shot_heatmap(
-    team_id: Optional[str] = None,
-    player_id: Optional[str] = None,
-    game_id: Optional[str] = None,
+    team_id: Optional[int] = None,
+    player_id: Optional[int] = None,
+    game_id: Optional[int] = None,
     season: Optional[str] = None,
     shot_type: Optional[str] = None,
     goal_only: bool = False,
@@ -81,7 +81,7 @@ def get_shot_heatmap(
 
 @router.get("/xg-breakdown", response_model=dict)
 def get_xg_breakdown(
-    player_id: str,
+    player_id: int,
     season: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
@@ -94,8 +94,8 @@ def get_xg_breakdown(
 
 @router.get("/team-comparison", response_model=dict)
 def compare_team_shot_patterns(
-    team_id1: str,
-    team_id2: str,
+    team_id1: int,
+    team_id2: int,
     season: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
@@ -108,7 +108,7 @@ def compare_team_shot_patterns(
 
 @router.get("/dangerous-zones/{player_id}", response_model=dict)
 def get_player_dangerous_zones(
-    player_id: str,
+    player_id: int,
     season: Optional[str] = None,
     db: Session = Depends(get_db)
 ):

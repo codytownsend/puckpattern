@@ -6,10 +6,9 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 # Add parent directory to path for imports
-import os
 import sys
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(parent_dir)
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from app.db.session import get_db, SessionLocal
 from app.data_import.import_service import NHLImportService
@@ -35,7 +34,7 @@ def import_teams(db: Session):
     return len(teams)
 
 
-def import_roster(db: Session, team_id: str):
+def import_roster(db: Session, team_id: int):
     """Import roster for a specific team."""
     service = NHLImportService(db)
     players = service.import_team_roster(team_id)
@@ -57,21 +56,21 @@ def import_all_rosters(db: Session):
     return total_players
 
 
-def import_game(db: Session, game_id: str):
+def import_game(db: Session, game_id: int):
     """Import a specific game with events."""
     service = NHLImportService(db)
     game = service.import_game(game_id, fetch_events=True)
     return 1 if game else 0
 
 
-def import_schedule(db: Session, start_date: str, end_date: str, team_id: str = None):
+def import_schedule(db: Session, start_date: str, end_date: str, team_id: int = None):
     """Import schedule for a date range."""
     service = NHLImportService(db)
     games = service.import_schedule(start_date, end_date, team_id)
     return len(games)
 
 
-def import_season(db: Session, season: str, team_id: str = None):
+def import_season(db: Session, season: str, team_id: int = None):
     """Import all games for a season."""
     service = NHLImportService(db)
     games = service.import_season(season, team_id)
@@ -88,23 +87,23 @@ def main():
     
     # Roster parser
     roster_parser = subparsers.add_parser("roster", help="Import team roster")
-    roster_parser.add_argument("--team-id", type=str, help="NHL team ID")
+    roster_parser.add_argument("--team-id", type=int, help="NHL team ID")
     roster_parser.add_argument("--all", action="store_true", help="Import all team rosters")
     
     # Game parser
     game_parser = subparsers.add_parser("game", help="Import a specific game")
-    game_parser.add_argument("--game-id", type=str, required=True, help="NHL game ID")
+    game_parser.add_argument("--game-id", type=int, required=True, help="NHL game ID")
     
     # Schedule parser
     schedule_parser = subparsers.add_parser("schedule", help="Import schedule for date range")
     schedule_parser.add_argument("--start-date", type=str, required=True, help="Start date (YYYY-MM-DD)")
     schedule_parser.add_argument("--end-date", type=str, required=True, help="End date (YYYY-MM-DD)")
-    schedule_parser.add_argument("--team-id", type=str, help="NHL team ID (optional)")
+    schedule_parser.add_argument("--team-id", type=int, help="NHL team ID (optional)")
     
     # Season parser
     season_parser = subparsers.add_parser("season", help="Import all games for a season")
     season_parser.add_argument("--season", type=str, required=True, help="Season (e.g., 20222023)")
-    season_parser.add_argument("--team-id", type=str, help="NHL team ID (optional)")
+    season_parser.add_argument("--team-id", type=int, help="NHL team ID (optional)")
     
     args = parser.parse_args()
     

@@ -3,7 +3,8 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from app.models.base import Team, Player, Game, GameEvent
+from app.models.base import Team, Player, GameEvent
+from app.models.analytics import Game
 from app.models.analytics import ShotEvent, ZoneEntry, Pass, PuckRecovery, TeamGameStats, PlayerGameStats
 from app.data_import.nhl_data_fetcher import NHLDataFetcher
 from app.data_import.event_processor import EventProcessor
@@ -21,73 +22,51 @@ class NHLImportService:
         self.fetcher = NHLDataFetcher()
         self.event_processor = EventProcessor(db)
     
-    def import_teams(self) -> List[Team]:
+    def import_teams(self) -> int:
         """
-        Import all NHL teams.
-        
+        Import NHL teams using both static and live metadata sources.
+
         Returns:
-            List of created or updated teams
+            int: Number of new teams imported
         """
         logger.info("Importing NHL teams")
-        nhl_teams = self.fetcher.get_teams()
-        
-        teams = []
-        for team_data in nhl_teams:
-            team_id = str(team_data["id"])
-            
-            # Check if team already exists
-            db_team = self.db.query(Team).filter(Team.team_id == team_id).first()
-            
-            if db_team:
-                # Update existing team
-                db_team.name = team_data["name"]["default"]
-                db_team.abbreviation = team_data["abbreviation"]
-                
-                # Update additional fields
-                if "cityName" in team_data:
-                    db_team.city_name = team_data["cityName"].get("default")
-                if "teamName" in team_data:
-                    db_team.team_name = team_data["teamName"].get("default")
-                if "conferenceAbbrev" in team_data:
-                    db_team.conference = team_data["conferenceAbbrev"]
-                if "divisionAbbrev" in team_data:
-                    db_team.division = team_data["divisionAbbrev"]
-                if "franchiseId" in team_data:
-                    db_team.franchise_id = team_data["franchiseId"]
-                if "officialSiteUrl" in team_data:
-                    db_team.official_site_url = team_data["officialSiteUrl"]
-                if "active" in team_data:
-                    db_team.active = team_data["active"]
-                
-                logger.debug(f"Updated team: {db_team.name}")
-            else:
-                # Create new team
+
+        teams = self.fetcher.get_all_teams()
+        team_metadata = self.fetcher.get_team_metadata()
+        imported_count = 0
+
+        for team in teams:
+            team_id = team["id"]
+            name = team.get("fullName")
+            abbreviation = team.get("triCode")
+            franchise_id = team.get("franchiseId")
+
+            # Skip placeholder teams
+            if not name or "To be determined" in name or abbreviation == "NHL":
+                continue
+
+            meta = team_metadata.get(team_id, {})
+
+            existing = self.db.query(Team).filter(Team.team_id == team_id).first()
+            if not existing:
                 db_team = Team(
                     team_id=team_id,
-                    name=team_data["name"]["default"],
-                    abbreviation=team_data["abbreviation"],
-                    city_name=team_data.get("cityName", {}).get("default"),
-                    team_name=team_data.get("teamName", {}).get("default"),
-                    conference=team_data.get("conferenceAbbrev"),
-                    division=team_data.get("divisionAbbrev"),
-                    franchise_id=team_data.get("franchiseId"),
-                    official_site_url=team_data.get("officialSiteUrl"),
-                    active=team_data.get("active", True)
+                    name=name,
+                    abbreviation=abbreviation,
+                    franchise_id=franchise_id,
+                    division=meta.get("divisionName"),
+                    conference=meta.get("conferenceName"),
+                    city_name=meta.get("placeName", {}).get("default"),
+                    venue_name=None,
+                    official_site_url=None,
+                    active=True,
                 )
-                
-                # Handle venue data if present
-                if "venueLocation" in team_data:
-                    db_team.venue_name = team_data.get("venue", {}).get("default")
-                    db_team.venue_city = team_data.get("cityName", {}).get("default")
-                
                 self.db.add(db_team)
-                logger.debug(f"Created team: {db_team.name}")
-            
-            teams.append(db_team)
-        
+                imported_count += 1
+
         self.db.commit()
-        logger.info(f"Imported {len(teams)} teams")
-        return teams
+        logger.info(f"Imported {imported_count} teams")
+        return imported_count
     
     def import_team_roster(self, team_abbrev: str) -> List[Player]:
         """
@@ -314,31 +293,19 @@ class NHLImportService:
         logger.info(f"Importing schedule from {start_date} to {end_date}")
         
         # Fetch schedule data
-        if team_abbrev:
-            # Use team-specific schedule
-            schedule_data = self.fetcher.get_schedule(start_date, end_date, team_abbrev)
-        else:
-            # Use general schedule
-            schedule_data = self.fetcher.get_schedule(start_date, end_date)
-        
-        games = []
-        # Process games by date
-        for day_data in schedule_data:
-            for game_data in day_data.get("games", []):
-                game_id = str(game_data["id"])
-                
-                # Check game status
-                status = game_data.get("gameState", "PREVIEW")
-                if status in ["FINAL", "LIVE"]:
-                    # For completed or live games, import full data with events
-                    db_game = self.import_game(game_id, fetch_events=True)
-                else:
-                    # For scheduled games, just create basic game entry
-                    db_game = self.import_basic_game(game_data)
-                
-                if db_game:
-                    games.append(db_game)
-        
+        schedule_games = self.fetcher.get_schedule_range(start_date, end_date)
+        games: List[Game] = []
+        for game_data in schedule_games:
+            game_id = str(game_data["id"])
+            status = game_data.get("gameState", "PREVIEW")
+            # Completed or live => import full with events
+            if status in ["FINAL", "LIVE"]:
+                db_game = self.import_game(game_id, fetch_events=True)
+            else:
+                db_game = self.import_basic_game(game_data)
+            if db_game:
+                games.append(db_game)
+
         logger.info(f"Imported {len(games)} games")
         return games
     

@@ -13,7 +13,7 @@ def get_games(
     skip: int = 0, 
     limit: Optional[int] = 100,
     season: Optional[str] = None,
-    team_id: Optional[str] = None,
+    team_id: Optional[int] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     status: Optional[str] = None,
@@ -86,7 +86,7 @@ def get_game_by_id(db: Session, game_id: int) -> Optional[Game]:
     return db.query(Game).filter(Game.id == game_id).first()
 
 
-def get_game_by_game_id(db: Session, game_id: str) -> Optional[Game]:
+def get_game_by_game_id(db: Session, game_id: int) -> Optional[Game]:
     """
     Get a game by external game_id (e.g., NHL API ID).
     """
@@ -129,7 +129,7 @@ def create_game(db: Session, game: GameCreate) -> Game:
     return db_game
 
 
-def update_game(db: Session, game_id: str, game_update: GameUpdate) -> Optional[Game]:
+def update_game(db: Session, game_id: int, game_update: GameUpdate) -> Optional[Game]:
     """
     Update a game by game_id.
     """
@@ -162,7 +162,7 @@ def update_game(db: Session, game_id: str, game_update: GameUpdate) -> Optional[
     return db_game
 
 
-def delete_game(db: Session, game_id: str) -> bool:
+def delete_game(db: Session, game_id: int) -> bool:
     """
     Delete a game by game_id.
     """
@@ -176,7 +176,7 @@ def delete_game(db: Session, game_id: str) -> bool:
     return True
 
 
-def get_game_stats(db: Session, game_id: str) -> Dict[str, Any]:
+def get_game_stats(db: Session, game_id: int) -> Dict[str, Any]:
     """
     Get detailed statistics for a game.
     """

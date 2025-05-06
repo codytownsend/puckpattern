@@ -14,7 +14,7 @@ def get_players(
     skip: int = 0,
     limit: int = 100,
     search: Optional[str] = None,
-    team_id: Optional[str] = None,
+    team_id: Optional[int] = None,
     position: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
@@ -48,7 +48,7 @@ def get_players(
 
 @router.get("/{player_id}", response_model=PlayerWithTeam)
 def get_player(
-    player_id: str,
+    player_id: int,
     db: Session = Depends(get_db)
 ):
     """
@@ -76,7 +76,7 @@ def create_player(
 
 @router.put("/{player_id}", response_model=Player)
 def update_player(
-    player_id: str,
+    player_id: int,
     player: PlayerUpdate,
     db: Session = Depends(get_db)
 ):
@@ -91,7 +91,7 @@ def update_player(
 
 @router.delete("/{player_id}")
 def delete_player(
-    player_id: str,
+    player_id: int,
     db: Session = Depends(get_db)
 ):
     """
@@ -105,7 +105,7 @@ def delete_player(
 
 @router.get("/{player_id}/stats", response_model=PlayerWithStats)
 def get_player_stats(
-    player_id: str,
+    player_id: int,
     season: Optional[str] = None,
     db: Session = Depends(get_db)
 ):

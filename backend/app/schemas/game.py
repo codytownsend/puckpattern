@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 
 
@@ -20,9 +20,9 @@ class GameBase(BaseModel):
 
 class GameCreate(GameBase):
     """Schema for creating a new game."""
-    game_id: str  # External identifier (e.g., NHL API ID)
-    home_team_id: str  # External team_id
-    away_team_id: str  # External team_id
+    game_id: int  # External identifier (e.g., NHL API ID)
+    home_team_id: int  # External team_id
+    away_team_id: int  # External team_id
 
 
 class GameUpdate(BaseModel):
@@ -34,8 +34,8 @@ class GameUpdate(BaseModel):
     time_remaining: Optional[str] = None
     home_score: Optional[int] = None
     away_score: Optional[int] = None
-    home_team_id: Optional[str] = None  # External team_id
-    away_team_id: Optional[str] = None  # External team_id
+    home_team_id: Optional[int] = None  # External team_id
+    away_team_id: Optional[int] = None  # External team_id
     venue_name: Optional[str] = None
     venue_city: Optional[str] = None
     game_type: Optional[int] = None
@@ -51,8 +51,7 @@ class Game(GameBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class GameWithTeams(Game):
@@ -60,8 +59,7 @@ class GameWithTeams(Game):
     home_team: Dict[str, Any]
     away_team: Dict[str, Any]
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class GameWithStats(GameWithTeams):
@@ -79,8 +77,7 @@ class GameWithStats(GameWithTeams):
     home_team_power_play: Optional[Dict[str, Any]] = None
     away_team_power_play: Optional[Dict[str, Any]] = None
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class GameList(BaseModel):

@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 
 
@@ -19,16 +19,16 @@ class ShotBase(BaseModel):
 
 class ShotCreate(ShotBase):
     """Schema for creating a new shot event."""
-    game_id: str
+    game_id: int
     period: int
     time_elapsed: float
     x_coordinate: float
     y_coordinate: float
-    shooter_id: str  # External player_id
-    team_id: str     # External team_id
-    goalie_id: Optional[str] = None  # External player_id
-    primary_assist_id: Optional[str] = None  # External player_id
-    secondary_assist_id: Optional[str] = None  # External player_id
+    shooter_id: int  # External player_id
+    team_id: int     # External team_id
+    goalie_id: Optional[int] = None  # External player_id
+    primary_assist_id: Optional[int] = None  # External player_id
+    secondary_assist_id: Optional[int] = None  # External player_id
     preceding_event_id: Optional[int] = None
     situation_code: Optional[str] = None  # "EV", "PP", "SH"
 
@@ -40,10 +40,10 @@ class ShotUpdate(BaseModel):
     angle: Optional[float] = None
     goal: Optional[bool] = None
     xg: Optional[float] = None
-    shooter_id: Optional[str] = None  # External player_id
-    goalie_id: Optional[str] = None  # External player_id
-    primary_assist_id: Optional[str] = None  # External player_id
-    secondary_assist_id: Optional[str] = None  # External player_id
+    shooter_id: Optional[int] = None  # External player_id
+    goalie_id: Optional[int] = None  # External player_id
+    primary_assist_id: Optional[int] = None  # External player_id
+    secondary_assist_id: Optional[int] = None  # External player_id
     preceding_event_id: Optional[int] = None
     is_scoring_chance: Optional[bool] = None
     is_high_danger: Optional[bool] = None
@@ -63,8 +63,7 @@ class Shot(ShotBase):
     secondary_assist_id: Optional[int] = None
     preceding_event_id: Optional[int] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ShotResponse(BaseModel):
@@ -92,8 +91,7 @@ class ShotResponse(BaseModel):
     frozen_shot: Optional[bool] = None
     situation_code: Optional[str] = None  # "EV", "PP", "SH"
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class HeatmapPoint(BaseModel):
@@ -113,8 +111,7 @@ class ShotHeatmapResponse(BaseModel):
     average_xg: float
     metadata: Dict[str, Any]
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ShotBreakdown(BaseModel):
@@ -132,5 +129,4 @@ class ShotBreakdown(BaseModel):
     shot_types: Dict[str, int] = {}
     shot_zones: Dict[str, int] = {}
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

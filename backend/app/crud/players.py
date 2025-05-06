@@ -11,7 +11,7 @@ def get_players(
     skip: int = 0, 
     limit: int = 100,
     search: Optional[str] = None,
-    team_id: Optional[str] = None,
+    team_id: Optional[int] = None,
     position: Optional[str] = None
 ) -> List[Player]:
     """
@@ -41,7 +41,7 @@ def get_player_by_id(db: Session, player_id: int) -> Optional[Player]:
     return db.query(Player).filter(Player.id == player_id).first()
 
 
-def get_player_by_player_id(db: Session, player_id: str) -> Optional[Player]:
+def get_player_by_player_id(db: Session, player_id: int) -> Optional[Player]:
     """
     Get a player by external player_id (e.g., NHL API ID).
     """
@@ -83,7 +83,7 @@ def create_player(db: Session, player: PlayerCreate) -> Player:
     return db_player
 
 
-def update_player(db: Session, player_id: str, player_update: PlayerUpdate) -> Optional[Player]:
+def update_player(db: Session, player_id: int, player_update: PlayerUpdate) -> Optional[Player]:
     """
     Update a player by player_id.
     """
@@ -113,7 +113,7 @@ def update_player(db: Session, player_id: str, player_update: PlayerUpdate) -> O
     return db_player
 
 
-def delete_player(db: Session, player_id: str) -> bool:
+def delete_player(db: Session, player_id: int) -> bool:
     """
     Delete a player by player_id.
     """
@@ -126,7 +126,7 @@ def delete_player(db: Session, player_id: str) -> bool:
     return True
 
 
-def get_player_stats(db: Session, player_id: str, season: Optional[str] = None) -> Dict[str, Any]:
+def get_player_stats(db: Session, player_id: int, season: Optional[str] = None) -> Dict[str, Any]:
     """
     Get statistics for a player.
     """

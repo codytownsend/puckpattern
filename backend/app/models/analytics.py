@@ -194,6 +194,7 @@ class PlayerGameStats(Base):
     hits = Column(Integer, default=0)
     blocks = Column(Integer, default=0)
     pim = Column(Integer, default=0)  # Penalty minutes
+    plus_minus = Column(Integer, nullable=True)
     
     # Advanced metrics
     xg = Column(Float, default=0.0)  # Expected goals

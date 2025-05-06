@@ -47,7 +47,7 @@ def get_team_by_id(db: Session, team_id: int) -> Optional[Team]:
     return db.query(Team).filter(Team.id == team_id).first()
 
 
-def get_team_by_team_id(db: Session, team_id: str) -> Optional[Team]:
+def get_team_by_team_id(db: Session, team_id: int) -> Optional[Team]:
     """
     Get a team by external team_id (e.g., NHL API ID).
     """
@@ -84,7 +84,7 @@ def create_team(db: Session, team: TeamCreate) -> Team:
     return db_team
 
 
-def update_team(db: Session, team_id: str, team_update: TeamUpdate) -> Optional[Team]:
+def update_team(db: Session, team_id: int, team_update: TeamUpdate) -> Optional[Team]:
     """
     Update a team by team_id.
     """
@@ -101,7 +101,7 @@ def update_team(db: Session, team_id: str, team_update: TeamUpdate) -> Optional[
     return db_team
 
 
-def delete_team(db: Session, team_id: str) -> bool:
+def delete_team(db: Session, team_id: int) -> bool:
     """
     Delete a team by team_id.
     """
@@ -114,7 +114,7 @@ def delete_team(db: Session, team_id: str) -> bool:
     return True
 
 
-def get_team_stats(db: Session, team_id: str) -> Dict[str, Any]:
+def get_team_stats(db: Session, team_id: int) -> Dict[str, Any]:
     """
     Get basic stats for a team.
     """

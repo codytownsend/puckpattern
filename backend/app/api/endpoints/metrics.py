@@ -11,7 +11,7 @@ router = APIRouter()
 
 @router.get("/player/{player_id}", response_model=PlayerMetrics)
 def get_player_metrics(
-    player_id: str,
+    player_id: int,
     db: Session = Depends(get_db)
 ):
     """
@@ -28,7 +28,7 @@ def get_player_metrics(
 
 @router.get("/team/{team_id}", response_model=TeamMetrics)
 def get_team_metrics(
-    team_id: str,
+    team_id: int,
     db: Session = Depends(get_db)
 ):
     """
@@ -45,7 +45,7 @@ def get_team_metrics(
 
 @router.get("/player/{player_id}/ecr", response_model=MetricValue)
 def get_player_ecr(
-    player_id: str,
+    player_id: int,
     db: Session = Depends(get_db)
 ):
     """
@@ -71,7 +71,7 @@ def get_player_ecr(
 
 @router.get("/player/{player_id}/pri", response_model=MetricValue)
 def get_player_pri(
-    player_id: str,
+    player_id: int,
     db: Session = Depends(get_db)
 ):
     """
@@ -97,7 +97,7 @@ def get_player_pri(
 
 @router.get("/team/{team_id}/ecr", response_model=MetricValue)
 def get_team_ecr(
-    team_id: str,
+    team_id: int,
     db: Session = Depends(get_db)
 ):
     """
@@ -123,7 +123,7 @@ def get_team_ecr(
 
 @router.get("/team/{team_id}/pri", response_model=MetricValue)
 def get_team_pri(
-    team_id: str,
+    team_id: int,
     db: Session = Depends(get_db)
 ):
     """
@@ -149,8 +149,8 @@ def get_team_pri(
 
 @router.get("/game/{game_id}/team/{team_id}", response_model=dict)
 def get_game_team_metrics(
-    game_id: str,
-    team_id: str,
+    game_id: int,
+    team_id: int,
     db: Session = Depends(get_db)
 ):
     """

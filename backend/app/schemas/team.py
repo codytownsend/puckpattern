@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 
 
@@ -19,7 +19,7 @@ class TeamBase(BaseModel):
 
 class TeamCreate(TeamBase):
     """Schema for creating a new team."""
-    team_id: str  # External identifier (e.g., NHL API ID)
+    team_id: int  # External identifier (e.g., NHL API ID)
 
 
 class TeamUpdate(BaseModel):
@@ -44,8 +44,7 @@ class Team(TeamBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TeamWithStats(Team):
@@ -67,8 +66,7 @@ class TeamWithStats(Team):
     power_play_pct: Optional[float] = None
     penalty_kill_pct: Optional[float] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TeamList(BaseModel):

@@ -111,7 +111,7 @@ class ShotAnalysisService:
             }
         )
     
-    def get_xg_breakdown(self, player_id: str, season: Optional[str] = None) -> Dict[str, Any]:
+    def get_xg_breakdown(self, player_id: int, season: Optional[str] = None) -> Dict[str, Any]:
         """
         Get a detailed breakdown of player's expected goals.
         """
@@ -221,7 +221,7 @@ class ShotAnalysisService:
             "xg_by_period": xg_by_period
         }
     
-    def compare_team_shot_patterns(self, team_id1: str, team_id2: str, season: Optional[str] = None) -> Dict[str, Any]:
+    def compare_team_shot_patterns(self, team_id1: int, team_id2: int, season: Optional[str] = None) -> Dict[str, Any]:
         """
         Compare shot patterns between two teams.
         """
@@ -346,7 +346,7 @@ class ShotAnalysisService:
             }
         }
     
-    def get_player_dangerous_zones(self, player_id: str, season: Optional[str] = None) -> Dict[str, Any]:
+    def get_player_dangerous_zones(self, player_id: int, season: Optional[str] = None) -> Dict[str, Any]:
         """
         Get zones where a player is most dangerous (highest xG).
         """

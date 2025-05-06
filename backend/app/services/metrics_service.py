@@ -165,7 +165,7 @@ class MetricsService:
             "xg_performance": xg_performance
         }
     
-    def calculate_player_metrics(self, player_id: str) -> Dict[str, Any]:
+    def calculate_player_metrics(self, player_id: int) -> Dict[str, Any]:
         """
         Calculate all metrics for a player.
         
@@ -223,7 +223,7 @@ class MetricsService:
             "ice_plus": ice_plus  # Simplified ICE+ score
         }
     
-    def calculate_team_metrics(self, team_id: str) -> Dict[str, Any]:
+    def calculate_team_metrics(self, team_id: int) -> Dict[str, Any]:
         """
         Calculate all metrics for a team.
         

@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
 from datetime import datetime
+from pydantic import BaseModel, ConfigDict
 
 
 class EntryBase(BaseModel):
@@ -16,16 +16,16 @@ class EntryBase(BaseModel):
 class EntryCreate(EntryBase):
     """Schema for creating a new zone entry."""
     event_id: int
-    player_id: Optional[str] = None  # External player_id
-    defender_id: Optional[str] = None  # External player_id
+    player_id: Optional[int] = None  # External player_id
+    defender_id: Optional[int] = None  # External player_id
 
 
 class EntryUpdate(BaseModel):
     """Schema for updating a zone entry (all fields optional)."""
     entry_type: Optional[str] = None
     controlled: Optional[bool] = None
-    player_id: Optional[str] = None  # External player_id
-    defender_id: Optional[str] = None  # External player_id
+    player_id: Optional[int] = None  # External player_id
+    defender_id: Optional[int] = None  # External player_id
     lead_to_shot: Optional[bool] = None
     lead_to_shot_time: Optional[float] = None
     attack_speed: Optional[str] = None
@@ -40,8 +40,7 @@ class Entry(EntryBase):
     defender_id: Optional[int] = None
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EntryWithRelations(Entry):
@@ -50,8 +49,7 @@ class EntryWithRelations(Entry):
     player: Optional[Dict[str, Any]] = None
     defender: Optional[Dict[str, Any]] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EntryList(BaseModel):
@@ -64,7 +62,7 @@ class EntryList(BaseModel):
 
 class PlayerEntryStats(BaseModel):
     """Schema for player zone entry statistics."""
-    player_id: str
+    player_id: int
     name: str
     total_entries: int
     controlled_entries: int
@@ -78,7 +76,7 @@ class PlayerEntryStats(BaseModel):
 
 class TeamEntryStats(BaseModel):
     """Schema for team zone entry statistics."""
-    team_id: str
+    team_id: int
     name: str
     total_entries: int
     controlled_entries: int

@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 
 
@@ -11,7 +11,8 @@ class EventBase(BaseModel):
     time_remaining: Optional[str] = None
     x_coordinate: Optional[float] = None
     y_coordinate: Optional[float] = None
-    situation_code: Optional[str] = None  # "EV", "PP", "SH"
+    situation_code: Optional[str] = None
+    strength_code: Optional[str] = None  # E.g. "EV", "PP", "SH"
     is_scoring_play: Optional[bool] = None
     is_penalty: Optional[bool] = None
     sort_order: Optional[int] = None
@@ -20,9 +21,9 @@ class EventBase(BaseModel):
 
 class EventCreate(EventBase):
     """Schema for creating a new game event."""
-    game_id: str
-    player_id: Optional[str] = None  # External player_id
-    team_id: Optional[str] = None    # External team_id
+    game_id: int
+    player_id: Optional[int] = None  # External player_id
+    team_id: Optional[int] = None    # External team_id
 
 
 class EventUpdate(BaseModel):
@@ -33,8 +34,9 @@ class EventUpdate(BaseModel):
     time_remaining: Optional[str] = None
     x_coordinate: Optional[float] = None
     y_coordinate: Optional[float] = None
-    player_id: Optional[str] = None  # External player_id
-    team_id: Optional[str] = None    # External team_id
+    player_id: Optional[int] = None  # External player_id
+    team_id: Optional[int] = None    # External team_id
+    strength_code: Optional[str] = None
     situation_code: Optional[str] = None
     is_scoring_play: Optional[bool] = None
     is_penalty: Optional[bool] = None
@@ -50,8 +52,7 @@ class Event(EventBase):
     team_id: Optional[int] = None
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EventWithRelations(Event):
@@ -59,8 +60,7 @@ class EventWithRelations(Event):
     player: Optional[Dict[str, Any]] = None
     team: Optional[Dict[str, Any]] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PlayByPlayEvent(BaseModel):
@@ -80,8 +80,7 @@ class PlayByPlayEvent(BaseModel):
     details: Optional[Dict[str, Any]] = None
     participants: Optional[List[Dict[str, Any]]] = None
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EventList(BaseModel):

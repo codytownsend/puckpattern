@@ -40,15 +40,15 @@ def test_db():
     db = TestingSessionLocal()
     
     # Create teams
-    team1 = Team(team_id="1", name="Toronto Maple Leafs", abbreviation="TOR")
-    team2 = Team(team_id="2", name="Montreal Canadiens", abbreviation="MTL")
+    team1 = Team(team_id=1, name="Toronto Maple Leafs", abbreviation="TOR")
+    team2 = Team(team_id=2, name="Montreal Canadiens", abbreviation="MTL")
     db.add(team1)
     db.add(team2)
     db.commit()
     
     # Create players
-    player1 = Player(player_id="8471675", name="Sidney Crosby", team_id=1, position="C")
-    player2 = Player(player_id="8471214", name="Alex Ovechkin", team_id=2, position="LW")
+    player1 = Player(player_id=8471675, name="Sidney Crosby", team_id=1, position="C")
+    player2 = Player(player_id=8471214, name="Alex Ovechkin", team_id=2, position="LW")
     db.add(player1)
     db.add(player2)
     db.commit()
@@ -151,7 +151,7 @@ def test_get_nonexistent_team(test_db):
 def test_create_team(test_db):
     """Test creating a new team."""
     new_team = {
-        "team_id": "3",
+        "team_id": 3,
         "name": "Boston Bruins",
         "abbreviation": "BOS"
     }
@@ -229,7 +229,7 @@ def test_get_player_stats(test_db):
     response = client.get("/api/players/8471675/stats")
     assert response.status_code == 200
     data = response.json()
-    assert data["player_id"] == "8471675"
+    assert data["player_id"] == 8471675
     assert data["name"] == "Sidney Crosby"
     assert "games_played" in data
 
@@ -308,7 +308,7 @@ def test_get_player_entries_stats(test_db):
     response = client.get("/api/entries/player/8471675/stats")
     assert response.status_code == 200
     data = response.json()
-    assert data["player_id"] == "8471675"
+    assert data["player_id"] == 8471675
     assert data["name"] == "Sidney Crosby"
     assert "total_entries" in data
     assert "controlled_entries" in data
@@ -319,7 +319,7 @@ def test_get_player_metrics(test_db):
     response = client.get("/api/metrics/player/8471675")
     assert response.status_code == 200
     data = response.json()
-    assert data["player_id"] == "8471675"
+    assert data["player_id"] == 8471675
     assert data["name"] == "Sidney Crosby"
     assert "ecr" in data
     assert "pri" in data
@@ -332,7 +332,7 @@ def test_get_team_metrics(test_db):
     response = client.get("/api/metrics/team/1")
     assert response.status_code == 200
     data = response.json()
-    assert data["team_id"] == "1"
+    assert data["team_id"] == 1
     assert data["name"] == "Toronto Maple Leafs Updated"  # Updated name from previous test
     assert "ecr" in data
     assert "pri" in data

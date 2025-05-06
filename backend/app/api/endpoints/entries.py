@@ -13,9 +13,9 @@ router = APIRouter()
 def get_entries(
     skip: int = 0,
     limit: int = 100,
-    game_id: Optional[str] = None,
-    team_id: Optional[str] = None,
-    player_id: Optional[str] = None,
+    game_id: Optional[int] = None,
+    team_id: Optional[int] = None,
+    player_id: Optional[int] = None,
     entry_type: Optional[str] = None,
     controlled: Optional[bool] = None,
     lead_to_shot: Optional[bool] = None,
@@ -114,7 +114,7 @@ def delete_entry(
 
 @router.get("/player/{player_id}/stats", response_model=PlayerEntryStats)
 def get_player_entries_stats(
-    player_id: str,
+    player_id: int,
     db: Session = Depends(get_db)
 ):
     """
@@ -128,7 +128,7 @@ def get_player_entries_stats(
 
 @router.get("/team/{team_id}/stats", response_model=TeamEntryStats)
 def get_team_entries_stats(
-    team_id: str,
+    team_id: int,
     db: Session = Depends(get_db)
 ):
     """

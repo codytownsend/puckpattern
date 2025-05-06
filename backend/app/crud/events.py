@@ -10,9 +10,9 @@ def get_events(
     db: Session, 
     skip: int = 0, 
     limit: int = 100,
-    game_id: Optional[str] = None,
-    team_id: Optional[str] = None,
-    player_id: Optional[str] = None,
+    game_id: Optional[int] = None,
+    team_id: Optional[int] = None,
+    player_id: Optional[int] = None,
     event_type: Optional[str] = None,
     period: Optional[int] = None,
     sort_by: str = "time_elapsed",
@@ -167,7 +167,7 @@ def delete_event(db: Session, event_id: int) -> bool:
     return True
 
 
-def get_game_play_by_play(db: Session, game_id: str) -> List[Dict[str, Any]]:
+def get_game_play_by_play(db: Session, game_id: int) -> List[Dict[str, Any]]:
     """
     Get a chronological play-by-play list of events for a game.
     """

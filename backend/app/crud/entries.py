@@ -11,9 +11,9 @@ def get_entries(
     db: Session, 
     skip: int = 0, 
     limit: int = 100,
-    game_id: Optional[str] = None,
-    team_id: Optional[str] = None,
-    player_id: Optional[str] = None,
+    game_id: Optional[int] = None,
+    team_id: Optional[int] = None,
+    player_id: Optional[int] = None,
     entry_type: Optional[str] = None,
     controlled: Optional[bool] = None,
     lead_to_shot: Optional[bool] = None
@@ -152,7 +152,7 @@ def delete_entry(db: Session, entry_id: int) -> bool:
     return True
 
 
-def get_player_entries_stats(db: Session, player_id: str) -> Dict[str, Any]:
+def get_player_entries_stats(db: Session, player_id: int) -> Dict[str, Any]:
     """
     Get zone entry statistics for a player.
     """
@@ -193,7 +193,7 @@ def get_player_entries_stats(db: Session, player_id: str) -> Dict[str, Any]:
     }
 
 
-def get_team_entries_stats(db: Session, team_id: str) -> Dict[str, Any]:
+def get_team_entries_stats(db: Session, team_id: int) -> Dict[str, Any]:
     """
     Get zone entry statistics for a team.
     """

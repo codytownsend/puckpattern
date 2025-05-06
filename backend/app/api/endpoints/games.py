@@ -15,7 +15,7 @@ def get_games(
     skip: int = 0,
     limit: int = 100,
     season: Optional[str] = None,
-    team_id: Optional[str] = None,
+    team_id: Optional[int] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     status: Optional[str] = None,
@@ -61,7 +61,7 @@ def get_games(
 
 @router.get("/{game_id}", response_model=GameWithTeams)
 def get_game(
-    game_id: str,
+    game_id: int,
     db: Session = Depends(get_db)
 ):
     """
@@ -92,7 +92,7 @@ def create_game(
 
 @router.put("/{game_id}", response_model=GameWithTeams)
 def update_game(
-    game_id: str,
+    game_id: int,
     game: GameUpdate,
     db: Session = Depends(get_db)
 ):
@@ -107,7 +107,7 @@ def update_game(
 
 @router.delete("/{game_id}")
 def delete_game(
-    game_id: str,
+    game_id: int,
     db: Session = Depends(get_db)
 ):
     """
@@ -121,7 +121,7 @@ def delete_game(
 
 @router.get("/{game_id}/stats", response_model=GameWithStats)
 def get_game_stats(
-    game_id: str,
+    game_id: int,
     db: Session = Depends(get_db)
 ):
     """

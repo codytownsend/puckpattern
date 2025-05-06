@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime, date
 
 
@@ -23,15 +23,15 @@ class PlayerBase(BaseModel):
 
 class PlayerCreate(PlayerBase):
     """Schema for creating a new player."""
-    player_id: str  # External identifier (e.g., NHL API ID)
-    team_id: Optional[str] = None  # External team_id
+    player_id: int  # External identifier (e.g., NHL API ID)
+    team_id: Optional[int] = None  # External team_id
 
 
 class PlayerUpdate(BaseModel):
     """Schema for updating a player (all fields optional)."""
     name: Optional[str] = None
     position: Optional[str] = None
-    team_id: Optional[str] = None  # External team_id
+    team_id: Optional[int] = None  # External team_id
     sweater_number: Optional[str] = None
     player_slug: Optional[str] = None
     height_in_inches: Optional[int] = None
@@ -54,16 +54,14 @@ class Player(PlayerBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PlayerWithTeam(Player):
     """Player schema with team information."""
     team: Optional[Dict[str, Any]] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PlayerWithStats(PlayerWithTeam):
@@ -97,8 +95,7 @@ class PlayerWithStats(PlayerWithTeam):
     sfs: Optional[float] = None  # System Fidelity Score
     omc: Optional[float] = None  # Offensive Momentum Curve
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PlayerList(BaseModel):

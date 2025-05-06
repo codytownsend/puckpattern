@@ -3,7 +3,8 @@ import math
 from typing import Dict, List, Optional, Any, Tuple
 from sqlalchemy.orm import Session
 
-from app.models.base import Game, Team, Player, GameEvent
+from app.models.base import Team, Player, GameEvent
+from app.models.analytics import Game
 from app.models.analytics import ShotEvent, ZoneEntry, Pass, PuckRecovery
 
 logger = logging.getLogger(__name__)
@@ -550,7 +551,7 @@ class EventProcessor:
         # This example shows how we might detect entry from a play sequence
         
         # Check if this is clearly a zone entry (in some APIs this may be explicit)
-        if event.event_type == "ZONE-ENTRY" or "entry" in play_data.get("details", {}).get("typeCode", "").lower():
+        if event.event_type == "ZONE-ENTRY" or "entry" in play_data.get("typeDescKey", "").lower():
             entry_type = self._determine_entry_type(event, play_data)
             controlled = entry_type != "dump"
             self.process_zone_entry(event, entry_type, controlled)
