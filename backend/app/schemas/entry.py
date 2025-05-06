@@ -9,6 +9,8 @@ class EntryBase(BaseModel):
     controlled: bool = False
     lead_to_shot: bool = False
     lead_to_shot_time: Optional[float] = None
+    attack_speed: Optional[str] = None  # "RUSH", "CONTROLLED", etc.
+    sequence_number: Optional[int] = None
 
 
 class EntryCreate(EntryBase):
@@ -26,6 +28,8 @@ class EntryUpdate(BaseModel):
     defender_id: Optional[str] = None  # External player_id
     lead_to_shot: Optional[bool] = None
     lead_to_shot_time: Optional[float] = None
+    attack_speed: Optional[str] = None
+    sequence_number: Optional[int] = None
 
 
 class Entry(EntryBase):
@@ -68,6 +72,8 @@ class PlayerEntryStats(BaseModel):
     controlled_entry_ratio: float
     entry_success_ratio: float
     entry_types: Dict[str, int]
+    rush_entries: Optional[int] = None
+    entries_with_possession: Optional[int] = None
 
 
 class TeamEntryStats(BaseModel):
@@ -81,3 +87,5 @@ class TeamEntryStats(BaseModel):
     entry_success_ratio: float
     entry_types: Dict[str, int]
     top_players: List[Dict[str, Any]]
+    rush_entries: Optional[int] = None
+    entries_with_possession: Optional[int] = None

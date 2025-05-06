@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 
@@ -7,6 +7,14 @@ class TeamBase(BaseModel):
     """Base team schema with common attributes."""
     name: str
     abbreviation: str
+    city_name: Optional[str] = None
+    team_name: Optional[str] = None
+    division: Optional[str] = None
+    conference: Optional[str] = None
+    venue_name: Optional[str] = None
+    venue_city: Optional[str] = None
+    official_site_url: Optional[str] = None
+    active: bool = True
 
 
 class TeamCreate(TeamBase):
@@ -18,12 +26,21 @@ class TeamUpdate(BaseModel):
     """Schema for updating a team (all fields optional)."""
     name: Optional[str] = None
     abbreviation: Optional[str] = None
+    city_name: Optional[str] = None
+    team_name: Optional[str] = None
+    division: Optional[str] = None
+    conference: Optional[str] = None
+    venue_name: Optional[str] = None
+    venue_city: Optional[str] = None
+    official_site_url: Optional[str] = None
+    active: Optional[bool] = None
 
 
 class Team(TeamBase):
     """Complete team schema for responses."""
     id: int
     team_id: str
+    franchise_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -46,6 +63,9 @@ class TeamWithStats(Team):
     xg_for: Optional[float] = None
     xg_against: Optional[float] = None
     system_metrics: Optional[Dict[str, Any]] = None
+    faceoff_win_pct: Optional[float] = None
+    power_play_pct: Optional[float] = None
+    penalty_kill_pct: Optional[float] = None
 
     class Config:
         orm_mode = True

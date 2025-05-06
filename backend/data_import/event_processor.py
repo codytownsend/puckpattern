@@ -29,43 +29,44 @@ class EventProcessor:
             Created game event
         """
         # Extract basic event data
-        event_type = play_data.get("result", {}).get("eventTypeId")
+        event_type = play_data.get("typeDescKey")
         if not event_type:
             logger.warning(f"Missing event type in play data: {play_data}")
             return None
         
         # Get period and time
-        period = play_data.get("about", {}).get("period")
-        period_time = play_data.get("about", {}).get("periodTime")
+        period = play_data.get("period")
+        time_in_period = play_data.get("timeInPeriod")
+        time_remaining = play_data.get("timeRemaining")
         
-        if not period or not period_time:
+        if not period or not time_in_period:
             logger.warning(f"Missing period info in play data: {play_data}")
             return None
         
         # Convert time to seconds
-        time_parts = period_time.split(":")
+        time_parts = time_in_period.split(":")
         time_elapsed = int(time_parts[0]) * 60 + int(time_parts[1])
         
         # Get coordinates
-        coordinates = play_data.get("coordinates", {})
-        x_coordinate = coordinates.get("x")
-        y_coordinate = coordinates.get("y")
+        x_coordinate = play_data.get("xCoord")
+        y_coordinate = play_data.get("yCoord")
         
         # Get team and player
         team_id = None
         player_id = None
         
         if "team" in play_data:
-            nhl_team_id = play_data["team"].get("id")
-            if nhl_team_id:
-                team = self.db.query(Team).filter(Team.team_id == str(nhl_team_id)).first()
+            team_abbrev = play_data["team"].get("abbrev")
+            if team_abbrev:
+                team = self.db.query(Team).filter(Team.abbreviation == team_abbrev).first()
                 if team:
                     team_id = team.id
         
-        # Get player from the first player in players list if available
-        players = play_data.get("players", [])
-        if players and "player" in players[0]:
-            nhl_player_id = players[0]["player"].get("id")
+        # Get player from the first participant if available
+        participants = play_data.get("participants", [])
+        if participants and len(participants) > 0:
+            player_data = participants[0]
+            nhl_player_id = player_data.get("playerId")
             if nhl_player_id:
                 player = self.db.query(Player).filter(Player.player_id == str(nhl_player_id)).first()
                 if player:
@@ -77,22 +78,34 @@ class EventProcessor:
             event_type=event_type,
             period=period,
             time_elapsed=time_elapsed,
+            time_remaining=time_remaining,
             x_coordinate=x_coordinate,
             y_coordinate=y_coordinate,
             player_id=player_id,
-            team_id=team_id
+            team_id=team_id,
+            situation_code=play_data.get("situationCode"),
+            is_scoring_play=play_data.get("isScoringPlay", False),
+            is_penalty=play_data.get("isPenalty", False),
+            sort_order=play_data.get("sortOrder"),
+            event_id=play_data.get("eventId")
         )
         self.db.add(game_event)
         self.db.commit()
         self.db.refresh(game_event)
         
         # Process specific event types
-        if event_type == "SHOT" or event_type == "GOAL":
+        if event_type == "GOAL":
+            self._process_shot_event(game_event, play_data)
+        elif event_type == "SHOT" or event_type == "SHOT-ON-GOAL":
+            self._process_shot_event(game_event, play_data)
+        elif event_type == "MISSED-SHOT" or event_type == "BLOCKED-SHOT":
             self._process_shot_event(game_event, play_data)
         elif event_type == "FACEOFF":
             self._process_faceoff(game_event, play_data)
         elif event_type == "HIT":
             self._process_hit(game_event, play_data)
+        elif event_type == "PENALTY":
+            self._process_penalty(game_event, play_data)
         elif event_type == "TAKEAWAY" or event_type == "GIVEAWAY":
             self._process_turnover(game_event, play_data)
         # Add more event type processing as needed
@@ -110,12 +123,11 @@ class EventProcessor:
         Returns:
             Created shot event
         """
-        result = play_data.get("result", {})
-        event_type = result.get("eventTypeId")
-        shot_type = result.get("secondaryType")
+        details = play_data.get("details", {})
+        is_goal = (event.event_type == "GOAL")
+        shot_type = details.get("shotType")
         
         # Default values
-        is_goal = (event_type == "GOAL")
         distance = None
         angle = None
         
@@ -140,11 +152,10 @@ class EventProcessor:
         primary_assist_id = None
         secondary_assist_id = None
         
-        players = play_data.get("players", [])
-        for player_info in players:
-            player_type = player_info.get("playerType")
-            nhl_player_id = player_info.get("player", {}).get("id")
-            
+        # Process participants
+        participants = play_data.get("participants", [])
+        for participant in participants:
+            nhl_player_id = participant.get("playerId")
             if not nhl_player_id:
                 continue
             
@@ -152,14 +163,25 @@ class EventProcessor:
             if not player:
                 continue
             
-            if player_type == "Shooter" or player_type == "Scorer":
+            # Determine participant role
+            if "shooterPlayerId" in details and str(nhl_player_id) == str(details["shooterPlayerId"]):
                 shooter_id = player.id
-            elif player_type == "Goalie":
+            elif "scoringPlayerId" in details and str(nhl_player_id) == str(details["scoringPlayerId"]):
+                shooter_id = player.id
+            elif "goalieInNetId" in details and str(nhl_player_id) == str(details["goalieInNetId"]):
                 goalie_id = player.id
-            elif player_type == "Assist" and primary_assist_id is None:
+            elif "assist1PlayerId" in details and str(nhl_player_id) == str(details["assist1PlayerId"]):
                 primary_assist_id = player.id
-            elif player_type == "Assist" and primary_assist_id is not None:
+            elif "assist2PlayerId" in details and str(nhl_player_id) == str(details["assist2PlayerId"]):
                 secondary_assist_id = player.id
+        
+        # If no shooter identified, use the first player
+        if shooter_id is None and participants:
+            first_player_id = participants[0].get("playerId")
+            if first_player_id:
+                player = self.db.query(Player).filter(Player.player_id == str(first_player_id)).first()
+                if player:
+                    shooter_id = player.id
         
         # Create shot event
         shot_event = ShotEvent(
@@ -171,7 +193,11 @@ class EventProcessor:
             shooter_id=shooter_id,
             goalie_id=goalie_id,
             primary_assist_id=primary_assist_id,
-            secondary_assist_id=secondary_assist_id
+            secondary_assist_id=secondary_assist_id,
+            is_scoring_chance=self._is_scoring_chance(distance, angle),
+            is_high_danger=self._is_high_danger(distance, angle),
+            rush_shot=self._is_rush_shot(play_data),
+            rebound_shot=self._is_rebound_shot(play_data)
         )
         
         # Calculate simple xG based on distance and angle
@@ -183,18 +209,24 @@ class EventProcessor:
             shot_event.xg = xg_base * (1.0 - (angle_factor * 0.7))
             
             # Adjust for shot type
-            if shot_type == "Slap Shot":
+            if shot_type == "Slap Shot" or shot_type == "SLAP_SHOT":
                 shot_event.xg *= 0.8
-            elif shot_type == "Wrist Shot":
+            elif shot_type == "Wrist Shot" or shot_type == "WRIST_SHOT":
                 shot_event.xg *= 1.1
-            elif shot_type == "Deflected":
+            elif shot_type == "Deflected" or shot_type == "DEFLECTION":
                 shot_event.xg *= 1.3
-            elif shot_type == "Snap Shot":
+            elif shot_type == "Snap Shot" or shot_type == "SNAP_SHOT":
                 shot_event.xg *= 1.0
-            elif shot_type == "Backhand":
+            elif shot_type == "Backhand" or shot_type == "BACKHAND":
                 shot_event.xg *= 0.9
-            elif shot_type == "Tip-In":
+            elif shot_type == "Tip-In" or shot_type == "TIP_IN":
                 shot_event.xg *= 1.4
+
+            # Adjust for rush and rebound
+            if shot_event.rush_shot:
+                shot_event.xg *= 1.2
+            if shot_event.rebound_shot:
+                shot_event.xg *= 1.3
         
         self.db.add(shot_event)
         self.db.commit()
@@ -202,20 +234,54 @@ class EventProcessor:
     
     def _process_faceoff(self, event: GameEvent, play_data: Dict[str, Any]) -> None:
         """Process faceoff event."""
-        # This would create a specialized faceoff event record
-        # For now we'll just use the base event
+        details = play_data.get("details", {})
+        winning_player_id = details.get("winningPlayerId")
+        losing_player_id = details.get("losingPlayerId")
+        
+        # Additional faceoff processing could be added here
         pass
     
     def _process_hit(self, event: GameEvent, play_data: Dict[str, Any]) -> None:
         """Process hit event."""
-        # This would create a specialized hit event record
-        # For now we'll just use the base event
+        participants = play_data.get("participants", [])
+        
+        hitter_id = None
+        hittee_id = None
+        
+        # Extract hitter and hittee from participants
+        if len(participants) >= 2:
+            hitter_data = participants[0]
+            hittee_data = participants[1]
+            
+            # Get hitter player
+            hitter_nhl_id = hitter_data.get("playerId")
+            if hitter_nhl_id:
+                hitter = self.db.query(Player).filter(Player.player_id == str(hitter_nhl_id)).first()
+                if hitter:
+                    hitter_id = hitter.id
+            
+            # Get hittee player
+            hittee_nhl_id = hittee_data.get("playerId")
+            if hittee_nhl_id:
+                hittee = self.db.query(Player).filter(Player.player_id == str(hittee_nhl_id)).first()
+                if hittee:
+                    hittee_id = hittee.id
+        
+        # Additional hit processing could be added here
         pass
     
     def _process_turnover(self, event: GameEvent, play_data: Dict[str, Any]) -> None:
         """Process turnover event (takeaway/giveaway)."""
-        # This would create a specialized turnover event record
-        # For now we'll just use the base event
+        # Additional turnover processing could be added here
+        pass
+    
+    def _process_penalty(self, event: GameEvent, play_data: Dict[str, Any]) -> None:
+        """Process penalty event."""
+        details = play_data.get("details", {})
+        penalty_type = details.get("typeCode") or details.get("penaltyTypeCode")
+        penalty_minutes = details.get("duration") or details.get("penaltyMinutes")
+        
+        # Additional penalty processing could be added here
         pass
     
     def process_zone_entry(self, event: GameEvent, entry_type: str, controlled: bool, player_id: Optional[int] = None, defender_id: Optional[int] = None) -> ZoneEntry:
@@ -237,7 +303,8 @@ class EventProcessor:
             entry_type=entry_type,
             controlled=controlled,
             player_id=player_id or event.player_id,
-            defender_id=defender_id
+            defender_id=defender_id,
+            attack_speed="RUSH" if self._is_rush_entry(event) else "CONTROLLED"
         )
         self.db.add(zone_entry)
         self.db.commit()
@@ -294,3 +361,39 @@ class EventProcessor:
         self.db.add(recovery)
         self.db.commit()
         return recovery
+    
+    def _is_scoring_chance(self, distance: Optional[float], angle: Optional[float]) -> bool:
+        """Determine if a shot is a scoring chance based on distance and angle."""
+        if distance is None or angle is None:
+            return False
+        
+        # Simple scoring chance definition
+        # Shots from inside 25 feet or with angle less than 30 degrees
+        return distance < 25 or angle < 30
+    
+    def _is_high_danger(self, distance: Optional[float], angle: Optional[float]) -> bool:
+        """Determine if a shot is from a high danger area based on distance and angle."""
+        if distance is None or angle is None:
+            return False
+        
+        # Simple high danger definition
+        # Shots from inside 15 feet or with angle less than 15 degrees
+        return distance < 15 or angle < 15
+    
+    def _is_rush_shot(self, play_data: Dict[str, Any]) -> bool:
+        """Determine if a shot is a rush shot based on play data."""
+        # This would need to be implemented based on tracking preceding events
+        # For now, return a simple placeholder implementation
+        return False
+    
+    def _is_rebound_shot(self, play_data: Dict[str, Any]) -> bool:
+        """Determine if a shot is a rebound shot based on play data."""
+        # This would need to be implemented based on tracking preceding events
+        # For now, return a simple placeholder implementation
+        return False
+    
+    def _is_rush_entry(self, event: GameEvent) -> bool:
+        """Determine if a zone entry is a rush based on event data."""
+        # This would need to be implemented based on tracking preceding events
+        # For now, return a simple placeholder implementation
+        return False

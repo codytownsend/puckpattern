@@ -1,12 +1,24 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
-from datetime import datetime
+from pydantic import BaseModel, Field
+from datetime import datetime, date
 
 
 class PlayerBase(BaseModel):
     """Base player schema with common attributes."""
     name: str
     position: str
+    sweater_number: Optional[str] = None
+    player_slug: Optional[str] = None
+    height_in_inches: Optional[int] = None
+    height_in_cm: Optional[float] = None
+    weight_in_pounds: Optional[int] = None
+    weight_in_kg: Optional[float] = None
+    birth_date: Optional[date] = None
+    birth_city: Optional[str] = None
+    birth_state_province: Optional[str] = None
+    birth_country: Optional[str] = None
+    shoots_catches: Optional[str] = None
+    headshot_url: Optional[str] = None
 
 
 class PlayerCreate(PlayerBase):
@@ -20,6 +32,18 @@ class PlayerUpdate(BaseModel):
     name: Optional[str] = None
     position: Optional[str] = None
     team_id: Optional[str] = None  # External team_id
+    sweater_number: Optional[str] = None
+    player_slug: Optional[str] = None
+    height_in_inches: Optional[int] = None
+    height_in_cm: Optional[float] = None
+    weight_in_pounds: Optional[int] = None
+    weight_in_kg: Optional[float] = None
+    birth_date: Optional[date] = None
+    birth_city: Optional[str] = None
+    birth_state_province: Optional[str] = None
+    birth_country: Optional[str] = None
+    shoots_catches: Optional[str] = None
+    headshot_url: Optional[str] = None
 
 
 class Player(PlayerBase):
@@ -55,6 +79,15 @@ class PlayerWithStats(PlayerWithTeam):
     xg: Optional[float] = None
     xg_per_game: Optional[float] = None
     ice_plus: Optional[float] = None
+    
+    # Additional stats from NHL API
+    face_off_pct: Optional[float] = None
+    power_play_goals: Optional[int] = None
+    power_play_points: Optional[int] = None
+    short_handed_goals: Optional[int] = None
+    short_handed_points: Optional[int] = None
+    game_winning_goals: Optional[int] = None
+    overtime_goals: Optional[int] = None
     
     # Custom metrics
     ecr: Optional[float] = None  # Entry Conversion Rate

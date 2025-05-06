@@ -27,6 +27,12 @@ class Game(Base):
     time_remaining = Column(String)
     home_score = Column(Integer)
     away_score = Column(Integer)
+    venue_name = Column(String)
+    venue_city = Column(String)
+    game_type = Column(Integer)  # 2 for regular season, 3 for playoffs
+    neutral_site = Column(Boolean, default=False)
+    eastern_utc_offset = Column(String)
+    venue_utc_offset = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
@@ -56,6 +62,11 @@ class ShotEvent(Base):
     primary_assist_id = Column(Integer, ForeignKey("players.id"), nullable=True)
     secondary_assist_id = Column(Integer, ForeignKey("players.id"), nullable=True)
     preceding_event_id = Column(Integer, ForeignKey("game_events.id"), nullable=True)
+    is_scoring_chance = Column(Boolean, default=False)
+    is_high_danger = Column(Boolean, default=False)
+    rush_shot = Column(Boolean, default=False)
+    rebound_shot = Column(Boolean, default=False)
+    frozen_shot = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
@@ -77,6 +88,8 @@ class ZoneEntry(Base):
     defender_id = Column(Integer, ForeignKey("players.id"), nullable=True)
     lead_to_shot = Column(Boolean, default=False)
     lead_to_shot_time = Column(Float, nullable=True)  # Time in seconds to shot
+    attack_speed = Column(String, nullable=True)  # "RUSH", "CONTROLLED", etc.
+    sequence_number = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
@@ -96,6 +109,8 @@ class Pass(Base):
     completed = Column(Boolean)
     intercepted = Column(Boolean, default=False)
     intercepted_by_id = Column(Integer, ForeignKey("players.id"), nullable=True)
+    distance = Column(Float, nullable=True)  # Distance in feet
+    angle_change = Column(Float, nullable=True)  # Change in angle of attack
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
@@ -113,11 +128,13 @@ class PuckRecovery(Base):
     zone = Column(String)  # "OZ", "NZ", "DZ"
     recovery_type = Column(String)  # "loose", "forecheck", "takeaway"
     lead_to_possession = Column(Boolean)
+    preceded_by_id = Column(Integer, ForeignKey("game_events.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
     event = relationship("GameEvent")
     player = relationship("Player")
+    preceded_by = relationship("GameEvent", foreign_keys=[preceded_by_id])
 
 class Shift(Base):
     __tablename__ = "shifts"
@@ -127,8 +144,10 @@ class Shift(Base):
     player_id = Column(Integer, ForeignKey("players.id"))
     start_time = Column(Float)  # Seconds from start of period
     end_time = Column(Float)  # Seconds from start of period
+    duration = Column(Float)  # Duration in seconds
     period = Column(Integer)
     team_id = Column(Integer, ForeignKey("teams.id"))
+    on_ice_strength = Column(String)  # "EV", "PP", "SH"
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
@@ -148,7 +167,10 @@ class PowerPlay(Base):
     duration = Column(Float)
     advantage_type = Column(String)  # "5v4", "5v3", etc.
     successful = Column(Boolean)
-    formation = Column(String, nullable=True)  # Detected formation
+    pp_formation = Column(String, nullable=True)  # Detected formation
+    pp_shots = Column(Integer, default=0)
+    pp_shot_attempts = Column(Integer, default=0)
+    pp_zone_time = Column(Float, nullable=True)  # Time in offensive zone in seconds
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
@@ -181,6 +203,22 @@ class PlayerGameStats(Base):
     zone_starts_off = Column(Integer, default=0)
     zone_starts_def = Column(Integer, default=0)
     zone_starts_neutral = Column(Integer, default=0)
+    
+    # Face-offs
+    faceoffs_taken = Column(Integer, default=0)
+    faceoffs_won = Column(Integer, default=0)
+    faceoff_pct = Column(Float, nullable=True)
+    
+    # Power play
+    pp_toi = Column(Float, default=0.0)  # PP time on ice in seconds
+    pp_goals = Column(Integer, default=0)
+    pp_assists = Column(Integer, default=0)
+    pp_shots = Column(Integer, default=0)
+    
+    # Penalty kill
+    pk_toi = Column(Float, default=0.0)  # PK time on ice in seconds
+    pk_goals_against = Column(Integer, default=0)
+    pk_shots_against = Column(Integer, default=0)
     
     # Custom metrics
     ecr = Column(Float, nullable=True)  # Entry Conversion Rate
@@ -220,6 +258,17 @@ class TeamGameStats(Base):
     xg_against = Column(Float, default=0.0)  # Expected goals against
     corsi_for = Column(Integer, default=0)
     corsi_against = Column(Integer, default=0)
+    
+    # Power play
+    pp_opportunities = Column(Integer, default=0)
+    pp_goals = Column(Integer, default=0)
+    pp_time = Column(Float, default=0.0)  # PP time in seconds
+    pp_shots = Column(Integer, default=0)
+    
+    # Penalty kill
+    pk_times_shorthanded = Column(Integer, default=0)
+    pk_goals_against = Column(Integer, default=0)
+    pk_time = Column(Float, default=0.0)  # PK time in seconds
     
     # System detection
     forecheck_style = Column(String, nullable=True)

@@ -12,6 +12,11 @@ class ShotBase(BaseModel):
     distance: Optional[float] = None
     angle: Optional[float] = None
     goal: bool = False
+    is_scoring_chance: Optional[bool] = False
+    is_high_danger: Optional[bool] = False
+    rush_shot: Optional[bool] = False
+    rebound_shot: Optional[bool] = False
+    frozen_shot: Optional[bool] = False
 
 
 class ShotCreate(ShotBase):
@@ -58,6 +63,11 @@ class ShotResponse(BaseModel):
     goalie: Optional[Dict[str, Any]] = None
     primary_assist: Optional[Dict[str, Any]] = None
     secondary_assist: Optional[Dict[str, Any]] = None
+    is_scoring_chance: Optional[bool] = None
+    is_high_danger: Optional[bool] = None
+    rush_shot: Optional[bool] = None
+    rebound_shot: Optional[bool] = None
+    frozen_shot: Optional[bool] = None
     
     class Config:
         orm_mode = True
@@ -67,6 +77,7 @@ class HeatmapPoint(BaseModel):
     x: float
     y: float
     value: float
+    type: Optional[str] = None  # For distinguishing shot types
 
 
 class ShotHeatmapResponse(BaseModel):
@@ -76,6 +87,23 @@ class ShotHeatmapResponse(BaseModel):
     total_goals: int
     average_xg: float
     metadata: Dict[str, Any]
+    
+    class Config:
+        orm_mode = True
+
+
+class ShotBreakdown(BaseModel):
+    """Schema for shot breakdown statistics."""
+    total: int
+    goals: int
+    shooting_pct: float
+    xg: float
+    xg_per_shot: float
+    high_danger: int = 0
+    medium_danger: int = 0
+    low_danger: int = 0
+    rush_shots: int = 0
+    rebound_shots: int = 0
     
     class Config:
         orm_mode = True

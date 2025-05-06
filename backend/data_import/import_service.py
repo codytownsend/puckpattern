@@ -40,16 +40,46 @@ class NHLImportService:
             
             if db_team:
                 # Update existing team
-                db_team.name = team_data["name"]
+                db_team.name = team_data["name"]["default"]
                 db_team.abbreviation = team_data["abbreviation"]
+                
+                # Update additional fields
+                if "cityName" in team_data:
+                    db_team.city_name = team_data["cityName"].get("default")
+                if "teamName" in team_data:
+                    db_team.team_name = team_data["teamName"].get("default")
+                if "conferenceAbbrev" in team_data:
+                    db_team.conference = team_data["conferenceAbbrev"]
+                if "divisionAbbrev" in team_data:
+                    db_team.division = team_data["divisionAbbrev"]
+                if "franchiseId" in team_data:
+                    db_team.franchise_id = team_data["franchiseId"]
+                if "officialSiteUrl" in team_data:
+                    db_team.official_site_url = team_data["officialSiteUrl"]
+                if "active" in team_data:
+                    db_team.active = team_data["active"]
+                
                 logger.debug(f"Updated team: {db_team.name}")
             else:
                 # Create new team
                 db_team = Team(
                     team_id=team_id,
-                    name=team_data["name"],
-                    abbreviation=team_data["abbreviation"]
+                    name=team_data["name"]["default"],
+                    abbreviation=team_data["abbreviation"],
+                    city_name=team_data.get("cityName", {}).get("default"),
+                    team_name=team_data.get("teamName", {}).get("default"),
+                    conference=team_data.get("conferenceAbbrev"),
+                    division=team_data.get("divisionAbbrev"),
+                    franchise_id=team_data.get("franchiseId"),
+                    official_site_url=team_data.get("officialSiteUrl"),
+                    active=team_data.get("active", True)
                 )
+                
+                # Handle venue data if present
+                if "venueLocation" in team_data:
+                    db_team.venue_name = team_data.get("venue", {}).get("default")
+                    db_team.venue_city = team_data.get("cityName", {}).get("default")
+                
                 self.db.add(db_team)
                 logger.debug(f"Created team: {db_team.name}")
             
@@ -59,49 +89,81 @@ class NHLImportService:
         logger.info(f"Imported {len(teams)} teams")
         return teams
     
-    def import_team_roster(self, team_id: str) -> List[Player]:
+    def import_team_roster(self, team_abbrev: str) -> List[Player]:
         """
         Import roster for a specific team.
         
         Args:
-            team_id: NHL team ID
+            team_abbrev: NHL team abbreviation (e.g., "EDM")
             
         Returns:
             List of imported players
         """
-        logger.info(f"Importing roster for team {team_id}")
+        logger.info(f"Importing roster for team {team_abbrev}")
         
         # Get the team from the database
-        db_team = self.db.query(Team).filter(Team.team_id == team_id).first()
+        db_team = self.db.query(Team).filter(Team.abbreviation == team_abbrev).first()
         if not db_team:
-            logger.error(f"Team {team_id} not found in database")
+            logger.error(f"Team {team_abbrev} not found in database")
             return []
         
         # Fetch roster from NHL API
-        roster_data = self.fetcher.get_team_roster(int(team_id))
+        roster_data = self.fetcher.get_team_roster(team_abbrev)
         
         players = []
+        # Process all roster sections: forwards, defensemen, goalies
         for player_data in roster_data:
-            person = player_data["person"]
-            player_id = str(person["id"])
-            position = player_data["position"]["code"]
+            player_id = str(player_data["playerId"])
+            position = player_data["position"]
             
             # Check if player already exists
             db_player = self.db.query(Player).filter(Player.player_id == player_id).first()
             
             if db_player:
                 # Update existing player
-                db_player.name = person["fullName"]
+                db_player.name = player_data["playerName"]["default"]
                 db_player.team_id = db_team.id
                 db_player.position = position
+                
+                # Update additional fields
+                db_player.player_slug = player_data.get("playerSlug")
+                db_player.sweater_number = player_data.get("playerNum")
+                db_player.height_in_inches = player_data.get("heightInInches")
+                db_player.height_in_cm = player_data.get("heightInCentimeters")
+                db_player.weight_in_pounds = player_data.get("weightInPounds")
+                db_player.weight_in_kg = player_data.get("weightInKilograms")
+                
+                if "birthDate" in player_data:
+                    db_player.birth_date = datetime.strptime(
+                        player_data["birthDate"], "%Y-%m-%d"
+                    ).date() if player_data["birthDate"] else None
+                
+                db_player.birth_city = player_data.get("birthCity", {}).get("default")
+                db_player.birth_country = player_data.get("birthCountry")
+                db_player.shoots_catches = player_data.get("shootsCatches")
+                db_player.headshot_url = player_data.get("headshot")
+                
                 logger.debug(f"Updated player: {db_player.name}")
             else:
                 # Create new player
                 db_player = Player(
                     player_id=player_id,
-                    name=person["fullName"],
+                    name=player_data["playerName"]["default"],
                     team_id=db_team.id,
-                    position=position
+                    position=position,
+                    player_slug=player_data.get("playerSlug"),
+                    sweater_number=player_data.get("playerNum"),
+                    height_in_inches=player_data.get("heightInInches"),
+                    height_in_cm=player_data.get("heightInCentimeters"),
+                    weight_in_pounds=player_data.get("weightInPounds"),
+                    weight_in_kg=player_data.get("weightInKilograms"),
+                    birth_date=datetime.strptime(
+                        player_data["birthDate"], "%Y-%m-%d"
+                    ).date() if "birthDate" in player_data and player_data["birthDate"] else None,
+                    birth_city=player_data.get("birthCity", {}).get("default"),
+                    birth_country=player_data.get("birthCountry"),
+                    shoots_catches=player_data.get("shootsCatches"),
+                    headshot_url=player_data.get("headshot")
                 )
                 self.db.add(db_player)
                 logger.debug(f"Created player: {db_player.name}")
@@ -127,51 +189,41 @@ class NHLImportService:
         
         # Fetch game data
         game_data = self.fetcher.get_game(int(game_id))
-        if not game_data or "gameData" not in game_data:
+        if not game_data:
             logger.error(f"Game {game_id} not found in NHL API")
             return None
         
-        game_info = game_data["gameData"]
-        
         # Get teams
-        home_team_data = game_info["teams"]["home"]
-        away_team_data = game_info["teams"]["away"]
+        home_team_data = game_data["homeTeam"]
+        away_team_data = game_data["awayTeam"]
         
-        home_team = self.db.query(Team).filter(Team.team_id == str(home_team_data["id"])).first()
-        away_team = self.db.query(Team).filter(Team.team_id == str(away_team_data["id"])).first()
+        home_team = self.db.query(Team).filter(Team.abbreviation == home_team_data["abbrev"]).first()
+        away_team = self.db.query(Team).filter(Team.abbreviation == away_team_data["abbrev"]).first()
         
         if not home_team or not away_team:
             logger.error(f"Teams for game {game_id} not found in database")
             return None
         
         # Game status info
-        status = game_info["status"]["detailedState"]
+        status = game_data.get("gameState", "PREVIEW")
         
         # Parse date
-        date_str = game_info["datetime"]["dateTime"]
-        date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        date_str = game_data["gameDate"]
+        date = datetime.strptime(date_str, "%Y-%m-%d")
         
         # Get season
-        season = game_info["season"]
+        season = game_data.get("season", str(date.year) + str(date.year + 1))
         
-        # Get score if game is live or final
-        home_score = 0
-        away_score = 0
-        period = 1
-        time_remaining = "20:00"
+        # Get score
+        home_score = home_team_data.get("score", 0)
+        away_score = away_team_data.get("score", 0)
         
-        if "liveData" in game_data and "linescore" in game_data["liveData"]:
-            linescore = game_data["liveData"]["linescore"]
-            
-            if "teams" in linescore:
-                home_score = linescore["teams"]["home"].get("goals", 0)
-                away_score = linescore["teams"]["away"].get("goals", 0)
-            
-            if "currentPeriod" in linescore:
-                period = linescore["currentPeriod"]
-            
-            if "currentPeriodTimeRemaining" in linescore:
-                time_remaining = linescore["currentPeriodTimeRemaining"]
+        # Get period info
+        period = game_data.get("period", 1)
+        time_remaining = game_data.get("clock", {}).get("timeRemaining", "20:00") if "clock" in game_data else "20:00"
+        
+        # Get venue
+        venue = game_data.get("venue", {}).get("default", "")
         
         # Check if game already exists
         db_game = self.db.query(Game).filter(Game.game_id == game_id).first()
@@ -185,6 +237,8 @@ class NHLImportService:
             db_game.time_remaining = time_remaining
             db_game.home_score = home_score
             db_game.away_score = away_score
+            db_game.venue_name = venue
+            db_game.game_type = game_data.get("gameType", 2)  # Default to regular season
             logger.debug(f"Updated game: {db_game.game_id}")
         else:
             # Create new game
@@ -198,7 +252,9 @@ class NHLImportService:
                 period=period,
                 time_remaining=time_remaining,
                 home_score=home_score,
-                away_score=away_score
+                away_score=away_score,
+                venue_name=venue,
+                game_type=game_data.get("gameType", 2)  # Default to regular season
             )
             self.db.add(db_game)
             logger.debug(f"Created game: {db_game.game_id}")
@@ -208,32 +264,33 @@ class NHLImportService:
         
         # Import game events if requested
         if fetch_events:
-            self.import_game_events(db_game, game_data)
+            self.import_game_events(db_game)
         
         return db_game
     
-    def import_game_events(self, db_game: Game, game_data: Dict[str, Any]) -> List[GameEvent]:
+    def import_game_events(self, db_game: Game) -> List[GameEvent]:
         """
         Import events for a game.
         
         Args:
             db_game: Game object
-            game_data: Game data from NHL API
             
         Returns:
             List of created event objects
         """
         logger.info(f"Importing events for game {db_game.game_id}")
         
-        if "liveData" not in game_data or "plays" not in game_data["liveData"]:
+        # Fetch play-by-play data from NHL API
+        play_by_play_data = self.fetcher.get_game_play_by_play(int(db_game.game_id))
+        
+        if not play_by_play_data or "plays" not in play_by_play_data:
             logger.error(f"No play data found for game {db_game.game_id}")
             return []
         
-        plays_data = game_data["liveData"]["plays"]
-        all_plays = plays_data.get("allPlays", [])
+        plays = play_by_play_data["plays"]
         
         events = []
-        for play in all_plays:
+        for play in plays:
             # Process each play/event
             event = self.event_processor.process_event(db_game, play)
             if event:
@@ -242,41 +299,45 @@ class NHLImportService:
         logger.info(f"Imported {len(events)} events for game {db_game.game_id}")
         return events
     
-    def import_schedule(self, start_date: str, end_date: str, team_id: Optional[str] = None) -> List[Game]:
+    def import_schedule(self, start_date: str, end_date: str, team_abbrev: Optional[str] = None) -> List[Game]:
         """
         Import schedule for a date range.
         
         Args:
             start_date: Start date in format "YYYY-MM-DD"
             end_date: End date in format "YYYY-MM-DD"
-            team_id: NHL team ID (optional)
+            team_abbrev: NHL team abbreviation (optional)
             
         Returns:
             List of imported games
         """
         logger.info(f"Importing schedule from {start_date} to {end_date}")
         
-        # Convert team_id to int if provided
-        nhl_team_id = int(team_id) if team_id else None
-        
-        # Fetch schedule from NHL API
-        schedule_data = self.fetcher.get_schedule(start_date, end_date, nhl_team_id)
+        # Fetch schedule data
+        if team_abbrev:
+            # Use team-specific schedule
+            schedule_data = self.fetcher.get_schedule(start_date, end_date, team_abbrev)
+        else:
+            # Use general schedule
+            schedule_data = self.fetcher.get_schedule(start_date, end_date)
         
         games = []
-        for game_data in schedule_data:
-            game_id = str(game_data["gamePk"])
-            
-            # Check if we need to fetch full game data
-            status = game_data["status"]["detailedState"]
-            if status in ["Final", "In Progress"]:
-                # For completed or live games, import full data with events
-                db_game = self.import_game(game_id, fetch_events=True)
-            else:
-                # For scheduled games, just create basic game entry
-                db_game = self.import_basic_game(game_data)
-            
-            if db_game:
-                games.append(db_game)
+        # Process games by date
+        for day_data in schedule_data:
+            for game_data in day_data.get("games", []):
+                game_id = str(game_data["id"])
+                
+                # Check game status
+                status = game_data.get("gameState", "PREVIEW")
+                if status in ["FINAL", "LIVE"]:
+                    # For completed or live games, import full data with events
+                    db_game = self.import_game(game_id, fetch_events=True)
+                else:
+                    # For scheduled games, just create basic game entry
+                    db_game = self.import_basic_game(game_data)
+                
+                if db_game:
+                    games.append(db_game)
         
         logger.info(f"Imported {len(games)} games")
         return games
@@ -291,14 +352,14 @@ class NHLImportService:
         Returns:
             Created or updated game object
         """
-        game_id = str(game_data["gamePk"])
+        game_id = str(game_data["id"])
         
         # Get teams
-        home_team_data = game_data["teams"]["home"]["team"]
-        away_team_data = game_data["teams"]["away"]["team"]
+        home_team_data = game_data["homeTeam"]
+        away_team_data = game_data["awayTeam"]
         
-        home_team = self.db.query(Team).filter(Team.team_id == str(home_team_data["id"])).first()
-        away_team = self.db.query(Team).filter(Team.team_id == str(away_team_data["id"])).first()
+        home_team = self.db.query(Team).filter(Team.abbreviation == home_team_data["abbrev"]).first()
+        away_team = self.db.query(Team).filter(Team.abbreviation == away_team_data["abbrev"]).first()
         
         if not home_team or not away_team:
             logger.error(f"Teams for game {game_id} not found in database")
@@ -306,17 +367,23 @@ class NHLImportService:
         
         # Parse date
         date_str = game_data["gameDate"]
-        date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        date = datetime.strptime(date_str, "%Y-%m-%d")
         
         # Get season
-        season = game_data["season"]
+        season = game_data.get("season", str(date.year) + str(date.year + 1))
         
         # Game status info
-        status = game_data["status"]["detailedState"]
+        status = game_data.get("gameState", "PREVIEW")
         
         # Score if available
-        home_score = game_data["teams"]["home"].get("score", 0)
-        away_score = game_data["teams"]["away"].get("score", 0)
+        home_score = home_team_data.get("score", 0)
+        away_score = away_team_data.get("score", 0)
+        
+        # Venue if available
+        venue = game_data.get("venue", {}).get("default", "")
+        
+        # Game type
+        game_type = game_data.get("gameType", 2)  # Default to regular season
         
         # Check if game already exists
         db_game = self.db.query(Game).filter(Game.game_id == game_id).first()
@@ -328,6 +395,8 @@ class NHLImportService:
             db_game.status = status
             db_game.home_score = home_score
             db_game.away_score = away_score
+            db_game.venue_name = venue
+            db_game.game_type = game_type
             logger.debug(f"Updated basic game: {db_game.game_id}")
         else:
             # Create new game
@@ -341,7 +410,9 @@ class NHLImportService:
                 period=1,
                 time_remaining="20:00",
                 home_score=home_score,
-                away_score=away_score
+                away_score=away_score,
+                venue_name=venue,
+                game_type=game_type
             )
             self.db.add(db_game)
             logger.debug(f"Created basic game: {db_game.game_id}")
@@ -350,13 +421,13 @@ class NHLImportService:
         self.db.refresh(db_game)
         return db_game
     
-    def import_season(self, season: str, team_id: Optional[str] = None) -> List[Game]:
+    def import_season(self, season: str, team_abbrev: Optional[str] = None) -> List[Game]:
         """
         Import all games for a season.
         
         Args:
             season: Season in format "20222023"
-            team_id: NHL team ID (optional)
+            team_abbrev: NHL team abbreviation (optional)
             
         Returns:
             List of imported games
@@ -368,4 +439,4 @@ class NHLImportService:
         start_date = f"{year}-09-01"
         end_date = f"{year+1}-07-31"
         
-        return self.import_schedule(start_date, end_date, team_id)
+        return self.import_schedule(start_date, end_date, team_abbrev)

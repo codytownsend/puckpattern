@@ -11,12 +11,13 @@ from app.schemas.game import GameCreate, GameUpdate
 def get_games(
     db: Session, 
     skip: int = 0, 
-    limit: int = 100,
+    limit: Optional[int] = 100,
     season: Optional[str] = None,
     team_id: Optional[str] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     status: Optional[str] = None,
+    game_type: Optional[int] = None,
     sort_by: str = "date",
     sort_desc: bool = True
 ) -> List[Game]:
@@ -51,6 +52,9 @@ def get_games(
     
     if status:
         query = query.filter(Game.status == status)
+    
+    if game_type:
+        query = query.filter(Game.game_type == game_type)
     
     # Apply sorting
     if sort_by == "date":
@@ -113,7 +117,11 @@ def create_game(db: Session, game: GameCreate) -> Game:
         period=game.period,
         time_remaining=game.time_remaining,
         home_score=game.home_score,
-        away_score=game.away_score
+        away_score=game.away_score,
+        venue_name=game.venue_name,
+        venue_city=game.venue_city,
+        game_type=game.game_type,
+        neutral_site=game.neutral_site
     )
     db.add(db_game)
     db.commit()
@@ -162,7 +170,7 @@ def delete_game(db: Session, game_id: str) -> bool:
     if not db_game:
         return False
     
-    # You might want to add cascade delete for related events
+    # Delete related records (cascade delete)
     db.delete(db_game)
     db.commit()
     return True
@@ -202,6 +210,10 @@ def get_game_stats(db: Session, game_id: str) -> Dict[str, Any]:
         "time_remaining": db_game.time_remaining,
         "home_score": db_game.home_score,
         "away_score": db_game.away_score,
+        "venue_name": db_game.venue_name,
+        "venue_city": db_game.venue_city,
+        "game_type": db_game.game_type,
+        "neutral_site": db_game.neutral_site,
         "home_team": {
             "id": db_game.home_team.id,
             "team_id": db_game.home_team.team_id,
@@ -225,11 +237,17 @@ def get_game_stats(db: Session, game_id: str) -> Dict[str, Any]:
             "pim": home_team_stats.pim,
             "faceoff_wins": home_team_stats.faceoff_wins,
             "faceoff_losses": home_team_stats.faceoff_losses,
+            "faceoff_pct": home_team_stats.faceoff_wins / (home_team_stats.faceoff_wins + home_team_stats.faceoff_losses) * 100 if (home_team_stats.faceoff_wins + home_team_stats.faceoff_losses) > 0 else 0,
             "xg": home_team_stats.xg,
             "xg_against": home_team_stats.xg_against,
             "corsi_for": home_team_stats.corsi_for,
             "corsi_against": home_team_stats.corsi_against,
-            # Add more stats as needed
+            "pp_opportunities": home_team_stats.pp_opportunities,
+            "pp_goals": home_team_stats.pp_goals,
+            "pp_pct": home_team_stats.pp_goals / home_team_stats.pp_opportunities * 100 if home_team_stats.pp_opportunities > 0 else 0,
+            "pk_times_shorthanded": home_team_stats.pk_times_shorthanded,
+            "pk_goals_against": home_team_stats.pk_goals_against,
+            "pk_pct": (home_team_stats.pk_times_shorthanded - home_team_stats.pk_goals_against) / home_team_stats.pk_times_shorthanded * 100 if home_team_stats.pk_times_shorthanded > 0 else 0,
         }
     else:
         game_info["home_team_stats"] = None
@@ -242,13 +260,104 @@ def get_game_stats(db: Session, game_id: str) -> Dict[str, Any]:
             "pim": away_team_stats.pim,
             "faceoff_wins": away_team_stats.faceoff_wins,
             "faceoff_losses": away_team_stats.faceoff_losses,
+            "faceoff_pct": away_team_stats.faceoff_wins / (away_team_stats.faceoff_wins + away_team_stats.faceoff_losses) * 100 if (away_team_stats.faceoff_wins + away_team_stats.faceoff_losses) > 0 else 0,
             "xg": away_team_stats.xg,
             "xg_against": away_team_stats.xg_against,
             "corsi_for": away_team_stats.corsi_for,
             "corsi_against": away_team_stats.corsi_against,
-            # Add more stats as needed
+            "pp_opportunities": away_team_stats.pp_opportunities,
+            "pp_goals": away_team_stats.pp_goals,
+            "pp_pct": away_team_stats.pp_goals / away_team_stats.pp_opportunities * 100 if away_team_stats.pp_opportunities > 0 else 0,
+            "pk_times_shorthanded": away_team_stats.pk_times_shorthanded,
+            "pk_goals_against": away_team_stats.pk_goals_against,
+            "pk_pct": (away_team_stats.pk_times_shorthanded - away_team_stats.pk_goals_against) / away_team_stats.pk_times_shorthanded * 100 if away_team_stats.pk_times_shorthanded > 0 else 0,
         }
     else:
         game_info["away_team_stats"] = None
+    
+    # Get player stats
+    from app.models.analytics import ShotEvent
+    
+    # Get scoring summary
+    goals = db.query(ShotEvent).join(
+        GameEvent, ShotEvent.event_id == GameEvent.id
+    ).filter(
+        and_(
+            GameEvent.game_id == db_game.game_id,
+            ShotEvent.goal == True
+        )
+    ).order_by(
+        GameEvent.period, 
+        GameEvent.time_elapsed
+    ).all()
+    
+    # Process goals by period
+    periods = {}
+    for goal in goals:
+        event = goal.event
+        period = event.period
+        
+        if period not in periods:
+            periods[period] = {
+                "home_goals": 0,
+                "away_goals": 0,
+                "goals": []
+            }
+        
+        # Determine if home or away goal
+        is_home_goal = (event.team_id == db_game.home_team_id)
+        
+        if is_home_goal:
+            periods[period]["home_goals"] += 1
+        else:
+            periods[period]["away_goals"] += 1
+        
+        # Format time remaining in period
+        minutes = int(event.time_elapsed / 60)
+        seconds = int(event.time_elapsed % 60)
+        time_in_period = f"{minutes:02d}:{seconds:02d}"
+        
+        # Get team abbreviation
+        team = db.query(Team).filter(Team.id == event.team_id).first()
+        team_abbrev = team.abbreviation if team else None
+        
+        # Get scorer and assists
+        scorer = db.query(Player).filter(Player.id == goal.shooter_id).first() if goal.shooter_id else None
+        primary_assist = db.query(Player).filter(Player.id == goal.primary_assist_id).first() if goal.primary_assist_id else None
+        secondary_assist = db.query(Player).filter(Player.id == goal.secondary_assist_id).first() if goal.secondary_assist_id else None
+        
+        # Add goal to period
+        periods[period]["goals"].append({
+            "time_in_period": time_in_period,
+            "team_abbrev": team_abbrev,
+            "scorer": {
+                "player_id": scorer.player_id if scorer else None,
+                "name": scorer.name if scorer else "Unknown",
+                "sweater_number": scorer.sweater_number if scorer else None
+            },
+            "primary_assist": {
+                "player_id": primary_assist.player_id if primary_assist else None,
+                "name": primary_assist.name if primary_assist else None,
+                "sweater_number": primary_assist.sweater_number if primary_assist else None
+            } if primary_assist else None,
+            "secondary_assist": {
+                "player_id": secondary_assist.player_id if secondary_assist else None,
+                "name": secondary_assist.name if secondary_assist else None,
+                "sweater_number": secondary_assist.sweater_number if secondary_assist else None
+            } if secondary_assist else None,
+            "strength": goal.event.situation_code or "EV"
+        })
+    
+    # Format periods for response
+    scoring_summary = []
+    for period_num, period_data in sorted(periods.items()):
+        scoring_summary.append({
+            "period": period_num,
+            "home_goals": period_data["home_goals"],
+            "away_goals": period_data["away_goals"],
+            "goals": period_data["goals"]
+        })
+    
+    game_info["scoring_summary"] = scoring_summary
     
     return game_info
