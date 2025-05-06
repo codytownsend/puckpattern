@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, Date
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 
@@ -40,6 +40,7 @@ class Player(Base):
     weight_in_pounds = Column(Integer) 
     weight_in_kg = Column(Float)
     birth_date = Column(Date)
+    birth_city = Column(String)
     birth_state_province = Column(String)
     birth_country = Column(String)
     shoots_catches = Column(String)

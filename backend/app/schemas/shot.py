@@ -1,17 +1,15 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 
 class ShotBase(BaseModel):
+    """Base schema for shot data with common attributes."""
     shot_type: str
-    x_coordinate: float
-    y_coordinate: float
-    period: int
-    time_elapsed: float
     distance: Optional[float] = None
     angle: Optional[float] = None
     goal: bool = False
+    xg: Optional[float] = None
     is_scoring_chance: Optional[bool] = False
     is_high_danger: Optional[bool] = False
     rush_shot: Optional[bool] = False
@@ -20,39 +18,59 @@ class ShotBase(BaseModel):
 
 
 class ShotCreate(ShotBase):
+    """Schema for creating a new shot event."""
     game_id: str
-    shooter_id: str
-    team_id: str
-    goalie_id: Optional[str] = None
-    primary_assist_id: Optional[str] = None
-    secondary_assist_id: Optional[str] = None
+    period: int
+    time_elapsed: float
+    x_coordinate: float
+    y_coordinate: float
+    shooter_id: str  # External player_id
+    team_id: str     # External team_id
+    goalie_id: Optional[str] = None  # External player_id
+    primary_assist_id: Optional[str] = None  # External player_id
+    secondary_assist_id: Optional[str] = None  # External player_id
     preceding_event_id: Optional[int] = None
+    situation_code: Optional[str] = None  # "EV", "PP", "SH"
+
+
+class ShotUpdate(BaseModel):
+    """Schema for updating a shot (all fields optional)."""
+    shot_type: Optional[str] = None
+    distance: Optional[float] = None
+    angle: Optional[float] = None
+    goal: Optional[bool] = None
+    xg: Optional[float] = None
+    shooter_id: Optional[str] = None  # External player_id
+    goalie_id: Optional[str] = None  # External player_id
+    primary_assist_id: Optional[str] = None  # External player_id
+    secondary_assist_id: Optional[str] = None  # External player_id
+    preceding_event_id: Optional[int] = None
+    is_scoring_chance: Optional[bool] = None
+    is_high_danger: Optional[bool] = None
+    rush_shot: Optional[bool] = None
+    rebound_shot: Optional[bool] = None
+    frozen_shot: Optional[bool] = None
 
 
 class Shot(ShotBase):
+    """Complete shot schema for responses."""
     id: int
     event_id: int
     shooter_id: int
-    team_id: int
-    game_id: str
+    created_at: datetime
     goalie_id: Optional[int] = None
     primary_assist_id: Optional[int] = None
     secondary_assist_id: Optional[int] = None
     preceding_event_id: Optional[int] = None
-    xg: Optional[float] = None
-    created_at: datetime
-    
+
     class Config:
         orm_mode = True
 
 
 class ShotResponse(BaseModel):
+    """Schema for shot response with related entities."""
     id: int
     shot_type: str
-    x_coordinate: float
-    y_coordinate: float
-    period: int
-    time_elapsed: float
     distance: Optional[float] = None
     angle: Optional[float] = None
     goal: bool
@@ -60,6 +78,10 @@ class ShotResponse(BaseModel):
     shooter: Dict[str, Any]
     team: Dict[str, Any]
     game: Dict[str, Any]
+    period: int
+    time_elapsed: float
+    x_coordinate: float
+    y_coordinate: float
     goalie: Optional[Dict[str, Any]] = None
     primary_assist: Optional[Dict[str, Any]] = None
     secondary_assist: Optional[Dict[str, Any]] = None
@@ -68,12 +90,14 @@ class ShotResponse(BaseModel):
     rush_shot: Optional[bool] = None
     rebound_shot: Optional[bool] = None
     frozen_shot: Optional[bool] = None
+    situation_code: Optional[str] = None  # "EV", "PP", "SH"
     
     class Config:
         orm_mode = True
 
 
 class HeatmapPoint(BaseModel):
+    """Schema for a heatmap data point."""
     x: float
     y: float
     value: float
@@ -81,6 +105,7 @@ class HeatmapPoint(BaseModel):
 
 
 class ShotHeatmapResponse(BaseModel):
+    """Schema for shot heatmap visualization response."""
     points: List[HeatmapPoint]
     max_value: float
     total_shots: int
@@ -104,6 +129,8 @@ class ShotBreakdown(BaseModel):
     low_danger: int = 0
     rush_shots: int = 0
     rebound_shots: int = 0
+    shot_types: Dict[str, int] = {}
+    shot_zones: Dict[str, int] = {}
     
     class Config:
         orm_mode = True
