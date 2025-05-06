@@ -1,10 +1,3 @@
-"""Initial schema migration
-
-Revision ID: 0001
-Revises: 
-Create Date: 2025-05-05
-
-"""
 from typing import Sequence, Union
 
 from alembic import op
