@@ -1,7 +1,6 @@
-// src/App.tsx
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Provider } from 'react-redux';
 import store from './store';
@@ -28,6 +27,7 @@ function App() {
         <Router>
           <MainLayout>
             <Routes>
+              {/* Make sure there's an exact path for the root */}
               <Route path="/" element={<Dashboard />} />
               <Route path="/shots" element={<ShotMap />} />
               <Route path="/powerplay" element={<PowerPlay />} />
