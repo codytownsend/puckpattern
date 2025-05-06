@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   Box, 
   Drawer, 
@@ -71,16 +71,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     dispatch(setSidebarOpen(false));
   };
 
+  // Changed to use component types instead of JSX elements
   const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-    { text: 'Shot & Chance Map', icon: <BubbleChartIcon />, path: '/shots' },
-    { text: 'Power Play Decoder', icon: <AssessmentIcon />, path: '/powerplay' },
-    { text: 'Team Strategy', icon: <CompareArrowsIcon />, path: '/team-strategy' },
-    { text: 'Player Intelligence', icon: <PeopleIcon />, path: '/players' },
-    { text: 'Transition Engine', icon: <TrendingUpIcon />, path: '/transition' },
-    { text: 'Game Analysis', icon: <BarChartIcon />, path: '/games' },
-    { text: 'System Fit', icon: <SportsSoccerIcon />, path: '/system-fit' },
-    { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
+    { text: 'Dashboard', icon: DashboardIcon, path: '/' },
+    { text: 'Shot & Chance Map', icon: BubbleChartIcon, path: '/shots' },
+    { text: 'Power Play Decoder', icon: AssessmentIcon, path: '/powerplay' },
+    { text: 'Team Strategy', icon: CompareArrowsIcon, path: '/team-strategy' },
+    { text: 'Player Intelligence', icon: PeopleIcon, path: '/players' },
+    { text: 'Transition Engine', icon: TrendingUpIcon, path: '/transition' },
+    { text: 'Game Analysis', icon: BarChartIcon, path: '/games' },
+    { text: 'System Fit', icon: SportsSoccerIcon, path: '/system-fit' },
+    { text: 'Settings', icon: SettingsIcon, path: '/settings' },
   ];
 
   return (
@@ -159,7 +160,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               }}
             >
               <ListItemIcon sx={{ color: theme.palette.common.white }}>
-                {item.icon}
+                {React.createElement(item.icon)}
               </ListItemIcon>
               <ListItemText primary={item.text} />
             </ListItemButton>

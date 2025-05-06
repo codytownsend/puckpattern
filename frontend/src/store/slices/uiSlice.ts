@@ -12,6 +12,15 @@ export interface Notification {
   duration?: number;
 }
 
+// Define proper typing for visualization options
+export interface VisualizationOptions {
+  showLabels: boolean;
+  normalizeData: boolean;
+  colorScheme: string;
+  gridSize: number;
+  [key: string]: any; // Add index signature for flexibility
+}
+
 // UI State interface
 export interface UIState {
   sidebarOpen: boolean;
@@ -21,12 +30,7 @@ export interface UIState {
   isLoading: {
     [key: string]: boolean;
   };
-  visualizationOptions: {
-    showLabels: boolean;
-    normalizeData: boolean;
-    colorScheme: string;
-    gridSize: number;
-  };
+  visualizationOptions: VisualizationOptions;
 }
 
 // Initial state
@@ -82,7 +86,7 @@ const uiSlice = createSlice({
     setVisualizationOption: (
       state,
       action: PayloadAction<{
-        option: keyof UIState['visualizationOptions'];
+        option: keyof VisualizationOptions;
         value: any;
       }>
     ) => {
