@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.models.base import Team, Player, GameEvent
-from app.models.analytics import Game
+from app.models.analytics import Game, PlayerTeamSeason
 from app.models.analytics import ShotEvent, ZoneEntry, Pass, PuckRecovery, TeamGameStats, PlayerGameStats
 from app.data_import.nhl_data_fetcher import NHLDataFetcher
 from app.data_import.event_processor import EventProcessor
@@ -103,100 +103,111 @@ class NHLImportService:
             return []
         
         # Fetch roster from NHL API - either current or by season
-        if season:
-            roster_data = self.fetcher.get_team_roster_by_season(team_abbrev, season)
-        else:
-            roster_data = self.fetcher.get_team_roster(team_abbrev)
-        
-        players = []
-        # Process all roster sections: forwards, defensemen, goalies
-        for player_data in roster_data:
-            player_id = str(player_data["playerId"])
-            position = player_data["position"]
-            
-            # Check if player exists with this team for this season
+        try:
             if season:
-                # Look up player historical assignment
-                player_team_season = self.db.query(PlayerTeamSeason).filter(
-                    PlayerTeamSeason.player_id == player_id,
-                    PlayerTeamSeason.team_id == db_team.id,
-                    PlayerTeamSeason.season == season
-                ).first()
-                
-                # Get or create the player regardless of team assignment
-                db_player = self.db.query(Player).filter(Player.player_id == player_id).first()
+                roster_data = self.fetcher.get_team_roster_by_season(team_abbrev, season)
             else:
-                # For current roster, just look up the player
+                roster_data = self.fetcher.get_team_roster(team_abbrev)
+            
+            # Check if we got valid data
+            if not roster_data:
+                logger.info(f"No roster data found for team {db_team.name}")
+                return []
+                
+            # Extract all players from the different position groups
+            all_players = []
+            
+            # Check if response has the correct format
+            if isinstance(roster_data, dict):
+                # Add players from each position group
+                all_players.extend(roster_data.get("forwards", []))
+                all_players.extend(roster_data.get("defensemen", []))
+                all_players.extend(roster_data.get("goalies", []))
+            elif isinstance(roster_data, list):
+                # If it's already a list, use it directly
+                all_players = roster_data
+            
+            players = []
+            # Process all roster players
+            for player_data in all_players:
+                # Extract player information with the correct keys
+                player_id = str(player_data["id"])
+                
+                # Get name from the nested structure
+                first_name = player_data["firstName"]["default"] if isinstance(player_data["firstName"], dict) else player_data["firstName"]
+                last_name = player_data["lastName"]["default"] if isinstance(player_data["lastName"], dict) else player_data["lastName"]
+                name = f"{first_name} {last_name}"
+                
+                position = player_data["positionCode"]
+                
+                # Skip PlayerTeamSeason check until we have created the table
+                # Check if player exists
                 db_player = self.db.query(Player).filter(Player.player_id == player_id).first()
-                player_team_season = None
-            
-            # Create or update player record
-            if db_player:
-                # Update existing player
-                db_player.name = player_data["playerName"]["default"]
-                db_player.position = position
                 
-                # Update additional fields
-                db_player.player_slug = player_data.get("playerSlug")
-                db_player.sweater_number = player_data.get("playerNum")
-                db_player.height_in_inches = player_data.get("heightInInches")
-                db_player.height_in_cm = player_data.get("heightInCentimeters")
-                db_player.weight_in_pounds = player_data.get("weightInPounds")
-                db_player.weight_in_kg = player_data.get("weightInKilograms")
+                # Get birth city with the correct structure
+                birth_city = player_data.get("birthCity", {})
+                if isinstance(birth_city, dict):
+                    birth_city = birth_city.get("default", "")
                 
-                if "birthDate" in player_data:
-                    db_player.birth_date = datetime.strptime(
-                        player_data["birthDate"], "%Y-%m-%d"
-                    ).date() if player_data["birthDate"] else None
-                
-                db_player.birth_city = player_data.get("birthCity", {}).get("default")
-                db_player.birth_country = player_data.get("birthCountry")
-                db_player.shoots_catches = player_data.get("shootsCatches")
-                db_player.headshot_url = player_data.get("headshot")
-                
-                logger.debug(f"Updated player: {db_player.name}")
-            else:
-                # Create new player
-                db_player = Player(
-                    player_id=player_id,
-                    name=player_data["playerName"]["default"],
-                    position=position,
-                    player_slug=player_data.get("playerSlug"),
-                    sweater_number=player_data.get("playerNum"),
-                    height_in_inches=player_data.get("heightInInches"),
-                    height_in_cm=player_data.get("heightInCentimeters"),
-                    weight_in_pounds=player_data.get("weightInPounds"),
-                    weight_in_kg=player_data.get("weightInKilograms"),
-                    birth_date=datetime.strptime(
-                        player_data["birthDate"], "%Y-%m-%d"
-                    ).date() if "birthDate" in player_data and player_data["birthDate"] else None,
-                    birth_city=player_data.get("birthCity", {}).get("default"),
-                    birth_country=player_data.get("birthCountry"),
-                    shoots_catches=player_data.get("shootsCatches"),
-                    headshot_url=player_data.get("headshot")
-                )
-                self.db.add(db_player)
-                logger.debug(f"Created player: {db_player.name}")
-            
-            # Update or create player-team-season relationship
-            if season:
-                if not player_team_season:
-                    player_team_season = PlayerTeamSeason(
+                # Create or update player record
+                if db_player:
+                    # Update existing player
+                    db_player.name = name
+                    db_player.position = position
+                    
+                    # Update additional fields
+                    db_player.sweater_number = player_data.get("sweaterNumber")
+                    db_player.height_in_inches = player_data.get("heightInInches")
+                    db_player.height_in_cm = player_data.get("heightInCentimeters")
+                    db_player.weight_in_pounds = player_data.get("weightInPounds")
+                    db_player.weight_in_kg = player_data.get("weightInKilograms")
+                    
+                    if "birthDate" in player_data:
+                        db_player.birth_date = datetime.strptime(
+                            player_data["birthDate"], "%Y-%m-%d"
+                        ).date() if player_data["birthDate"] else None
+                    
+                    db_player.birth_city = birth_city
+                    db_player.birth_country = player_data.get("birthCountry")
+                    db_player.shoots_catches = player_data.get("shootsCatches")
+                    db_player.headshot_url = player_data.get("headshot")
+                    
+                    logger.debug(f"Updated player: {db_player.name}")
+                else:
+                    # Create new player
+                    db_player = Player(
                         player_id=player_id,
-                        team_id=db_team.id,
-                        season=season
+                        name=name,
+                        position=position,
+                        sweater_number=player_data.get("sweaterNumber"),
+                        height_in_inches=player_data.get("heightInInches"),
+                        height_in_cm=player_data.get("heightInCentimeters"),
+                        weight_in_pounds=player_data.get("weightInPounds"),
+                        weight_in_kg=player_data.get("weightInKilograms"),
+                        birth_date=datetime.strptime(
+                            player_data["birthDate"], "%Y-%m-%d"
+                        ).date() if "birthDate" in player_data and player_data["birthDate"] else None,
+                        birth_city=birth_city,
+                        birth_country=player_data.get("birthCountry"),
+                        shoots_catches=player_data.get("shootsCatches"),
+                        headshot_url=player_data.get("headshot")
                     )
-                    self.db.add(player_team_season)
-                    logger.debug(f"Created player-team-season: {db_player.name} - {db_team.name} - {season}")
-            else:
+                    self.db.add(db_player)
+                    logger.debug(f"Created player: {name}")
+                
+                # Skip PlayerTeamSeason stuff for now
                 # For current roster, update the player's current team
                 db_player.team_id = db_team.id
+                
+                players.append(db_player)
             
-            players.append(db_player)
+            self.db.commit()
+            logger.info(f"Imported {len(players)} players for team {db_team.name}")
+            return players
         
-        self.db.commit()
-        logger.info(f"Imported {len(players)} players for team {db_team.name}")
-        return players
+        except Exception as e:
+            logger.error(f"Error importing roster for team {db_team.name}: {e}")
+            return []
     
     def import_game(self, game_id: str, fetch_events: bool = True) -> Optional[Game]:
         """
@@ -335,22 +346,44 @@ class NHLImportService:
         Returns:
             List of imported games
         """
-        logger.info(f"Importing schedule from {start_date} to {end_date}")
-        
-        # Fetch schedule data
+        # Get schedule for date range
         schedule_games = self.fetcher.get_schedule_range(start_date, end_date)
-        games: List[Game] = []
+        
+        # Add debug logging
+        logger.info(f"Found {len(schedule_games)} games in schedule from {start_date} to {end_date}")
+        
+        if len(schedule_games) > 0:
+            # Log a sample game to understand the structure
+            import json
+            sample_game = schedule_games[0]
+            logger.debug(f"Sample game data structure: {json.dumps({k: sample_game[k] for k in list(sample_game.keys())[:5]}, indent=2)}")
+        
+        games = []
         for game_data in schedule_games:
-            game_id = str(game_data["id"])
-            status = game_data.get("gameState", "PREVIEW")
-            # Completed or live => import full with events
-            if status in ["FINAL", "LIVE"]:
+            # Check if this is a game we want to import
+            game_id = str(game_data.get("id"))
+            
+            # Filter by team if provided
+            if team_abbrev:
+                home_team = game_data.get("homeTeam", {}).get("abbrev")
+                away_team = game_data.get("awayTeam", {}).get("abbrev")
+                if team_abbrev not in [home_team, away_team]:
+                    continue
+            
+            # Import completed or live games with events
+            status = game_data.get("gameState", "")
+            if status in ["FINAL", "LIVE"] and game_id:
+                logger.info(f"Importing game {game_id}")
                 db_game = self.import_game(game_id, fetch_events=True)
+                if db_game:
+                    games.append(db_game)
             else:
+                # Import basic game info without events
+                logger.info(f"Importing basic game {game_id} with status {status}")
                 db_game = self.import_basic_game(game_data)
-            if db_game:
-                games.append(db_game)
-
+                if db_game:
+                    games.append(db_game)
+        
         logger.info(f"Imported {len(games)} games")
         return games
     
@@ -438,7 +471,7 @@ class NHLImportService:
         Import all games for a season.
         
         Args:
-            season: Season in format "20222023"
+            season: Season in format "20232024"
             team_abbrev: NHL team abbreviation (optional)
             
         Returns:
@@ -448,7 +481,58 @@ class NHLImportService:
         
         # Parse season year
         year = int(season[:4])
-        start_date = f"{year}-09-01"
-        end_date = f"{year+1}-07-31"
         
-        return self.import_schedule(start_date, end_date, team_abbrev)
+        # Get all teams if no specific team is provided
+        if not team_abbrev:
+            teams = self.db.query(Team).filter(Team.active == True).all()
+            team_abbrevs = [team.abbreviation for team in teams]
+        else:
+            team_abbrevs = [team_abbrev]
+        
+        # Track all game IDs to avoid duplicates
+        all_game_ids = set()
+        imported_games = []
+        
+        # Define months we want to check (NHL season typically runs Oct-Jun)
+        months = []
+        for month in range(10, 13):  # Oct-Dec of start year
+            months.append(f"{year}-{month:02d}")
+        for month in range(1, 7):  # Jan-Jun of end year
+            months.append(f"{year+1}-{month:02d}")
+        
+        # For each team, fetch their schedule for relevant months
+        for team_abbr in team_abbrevs:
+            logger.info(f"Fetching schedule for team {team_abbr}")
+            
+            for month in months:
+                logger.info(f"Fetching {month} schedule for {team_abbr}")
+                
+                # Get the team's schedule for this month
+                schedule_data = self.fetcher._get(f"/v1/club-schedule/{team_abbr}/month/{month}")
+                
+                if not schedule_data or "games" not in schedule_data:
+                    logger.info(f"No games found for {team_abbr} in {month}")
+                    continue
+                    
+                # Process games from this month
+                month_games = schedule_data["games"]
+                logger.info(f"Found {len(month_games)} games for {team_abbr} in {month}")
+                
+                # Import each game if we haven't already
+                for game_data in month_games:
+                    game_id = str(game_data.get("id"))
+                    
+                    # Skip if we've already processed this game
+                    if game_id in all_game_ids:
+                        continue
+                        
+                    all_game_ids.add(game_id)
+                    
+                    # Import the game with all its events
+                    logger.info(f"Importing game {game_id}")
+                    game = self.import_game(game_id, fetch_events=True)
+                    if game:
+                        imported_games.append(game)
+        
+        logger.info(f"Imported {len(imported_games)} games for season {season}")
+        return imported_games

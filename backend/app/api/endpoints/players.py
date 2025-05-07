@@ -48,7 +48,7 @@ def get_players(
 
 @router.get("/{player_id}", response_model=PlayerWithTeam)
 def get_player(
-    player_id: int,
+    player_id: str,
     db: Session = Depends(get_db)
 ):
     """

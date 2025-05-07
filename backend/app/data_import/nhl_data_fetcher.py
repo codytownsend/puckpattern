@@ -20,10 +20,7 @@ class NHLDataFetcher:
     def _get(self, endpoint: str) -> Dict[str, Any]:
         """
         Make a GET request to the NHL API.
-        
-        Args:
-            endpoint: API endpoint to fetch
-            
+                
         Returns:
             Response data as dictionary
         """
@@ -107,7 +104,7 @@ class NHLDataFetcher:
         players.extend(data.get("goalies", []))
         return players
     
-    def get_team_roster_by_season(self, team_abbrev: str, season: str) -> List[Dict[str, Any]]:
+    def get_team_roster_by_season(self, team_abbrev: str, season: str) -> Dict[str, Any]:
         """
         Get the roster for a team by season.
         
@@ -116,15 +113,12 @@ class NHLDataFetcher:
             season: Season in format "20232024"
             
         Returns:
-            List of players on the roster
+            Dictionary containing forwards, defensemen, and goalies lists
         """
-        data = self._get(f"roster/{team_abbrev}/{season}")
-        # Combine forwards, defensemen, and goalies into one list
-        players = []
-        players.extend(data.get("forwards", []))
-        players.extend(data.get("defensemen", []))
-        players.extend(data.get("goalies", []))
-        return players
+        # Directly use the web API endpoint structure
+        data = self._get(f"/v1/roster/{team_abbrev}/{season}")
+        
+        return data or {}  # Return empty dict if no data
     
     def get_player(self, player_id: int) -> Dict[str, Any]:
         """
@@ -168,9 +162,40 @@ class NHLDataFetcher:
         Returns:
             List[Dict[str, Any]]: List of game dictionaries for the specified date
         """
-        data = self._get(f"schedule/{date}")
-        return data.get("dates", [{}])[0].get("games", [])
+        # Try the web API format first
+        data = self._get(f"/v1/schedule/{date}")
+        
+        # Check response structure
+        if not data:
+            # Try alternative endpoint format
+            data = self._get(f"/v1/scoreboard/{date}")
+        
+        # Process the response
+        games = []
+        
+        # Handle different response formats
+        if data and "games" in data:
+            games = data["games"]
+        elif data and "gameWeek" in data:
+            for day in data["gameWeek"]:
+                if "date" in day and day["date"] == date and "games" in day:
+                    games.extend(day["games"])
+        
+        return games
     
+    def get_team_month_schedule(self, team_abbrev: str, month: str) -> Dict[str, Any]:
+        """
+        Get schedule for a team for a specific month.
+        
+        Args:
+            team_abbrev: NHL team abbreviation (e.g., "TOR")
+            month: Month in format "YYYY-MM"
+            
+        Returns:
+            Schedule data
+        """
+        return self._get(f"/v1/club-schedule/{team_abbrev}/month/{month}")
+
     def get_schedule_range(self, start_date: str, end_date: str) -> List[Dict[str, Any]]:
         """
         Get game schedule for a date range by iterating over dates.
@@ -190,8 +215,8 @@ class NHLDataFetcher:
 
         while current <= end:
             date_str = current.strftime("%Y-%m-%d")
-            data = self._get(f"schedule/{date_str}")
-            all_games.extend(data.get("dates", [{}])[0].get("games", []))
+            games = self.get_schedule(date_str)
+            all_games.extend(games)
             current += timedelta(days=1)
 
         return all_games
@@ -278,7 +303,7 @@ class NHLDataFetcher:
         Returns:
             Game data
         """
-        return self._get(f"gamecenter/{game_id}/landing")
+        return self._get(f"/v1/gamecenter/{game_id}/landing")
     
     def get_game_boxscore(self, game_id: int) -> Dict[str, Any]:
         """
@@ -290,7 +315,7 @@ class NHLDataFetcher:
         Returns:
             Game boxscore data
         """
-        return self._get(f"gamecenter/{game_id}/boxscore")
+        return self._get(f"/v1/gamecenter/{game_id}/boxscore")
     
     def get_game_play_by_play(self, game_id: int) -> Dict[str, Any]:
         """
@@ -302,7 +327,7 @@ class NHLDataFetcher:
         Returns:
             Play-by-play data
         """
-        return self._get(f"gamecenter/{game_id}/play-by-play")
+        return self._get(f"/v1/gamecenter/{game_id}/play-by-play")
     
     def get_game_right_rail(self, game_id: int) -> Dict[str, Any]:
         """
