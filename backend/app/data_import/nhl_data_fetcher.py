@@ -13,7 +13,8 @@ class NHLDataFetcher:
     """
     
     def __init__(self):
-        self.base_url = "https://api-web.nhle.com/v1"
+        self.base_url = "https://api.nhle.com/stats/rest"
+        self.web_url = "https://api-web.nhle.com/v1"
         self.delay = 0.5  # Delay between API calls to avoid rate limiting
     
     def _get(self, endpoint: str) -> Dict[str, Any]:
@@ -26,7 +27,14 @@ class NHLDataFetcher:
         Returns:
             Response data as dictionary
         """
-        url = f"{self.base_url}/{endpoint}"
+        # Determine if this is a web API or stats API endpoint
+        if endpoint.startswith('http'):
+            url = endpoint
+        elif endpoint.startswith('/v1'):
+            url = f"https://api-web.nhle.com{endpoint}"
+        else:
+            url = f"{self.base_url}/{endpoint}"
+            
         logger.debug(f"Fetching NHL API: {url}")
         
         try:
@@ -40,20 +48,32 @@ class NHLDataFetcher:
     
     def get_all_teams(self) -> List[Dict[str, Any]]:
         """
-        Returns all teams (active and historical) from the team endpoint.
+        Returns all teams from the NHL Stats API.
         """
-        data = self._get("team")
+        data = self._get("en/team")
+        
+        # Check if we got a valid response with teams
+        if not data or "data" not in data:
+            return []
+        
         return data.get("data", [])
-
 
     def get_team_metadata(self) -> Dict[int, Dict[str, Any]]:
         """
-        Returns a mapping of team_id → metadata from current standings.
+        Returns a mapping of team_id → metadata.
         """
-        data = self._get("https://api-web.nhle.com/v1/standings/now")  # Full URL override
-        if isinstance(data, list):
-            return {item["teamId"]: item for item in data}
-        return {}
+        data = self._get("en/team")
+        
+        if not data or "data" not in data:
+            return {}
+        
+        # Create a dictionary mapping team IDs to their full data
+        team_data = {}
+        for team in data.get("data", []):
+            if "id" in team:
+                team_data[team["id"]] = team
+        
+        return team_data
     
     def get_team(self, team_abbrev: str) -> Dict[str, Any]:
         """

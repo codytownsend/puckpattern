@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, JSON, Table
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func, and_, or_
+from sqlalchemy.orm import relationship, foreign
 
 from app.models.base import Base, Team, Player, GameEvent
 
@@ -69,13 +69,16 @@ class ShotEvent(Base):
     frozen_shot = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
-    event = relationship("GameEvent")
+    # Relationships with explicit foreign_keys
+    event = relationship("GameEvent", foreign_keys=[event_id], back_populates="shot")
     shooter = relationship("Player", foreign_keys=[shooter_id])
     goalie = relationship("Player", foreign_keys=[goalie_id])
     primary_assist = relationship("Player", foreign_keys=[primary_assist_id])
     secondary_assist = relationship("Player", foreign_keys=[secondary_assist_id])
     preceding_event = relationship("GameEvent", foreign_keys=[preceding_event_id])
+
+# Add back-reference relationship from GameEvent to ShotEvent
+GameEvent.shot = relationship("ShotEvent", foreign_keys=[ShotEvent.event_id], back_populates="event")
 
 class ZoneEntry(Base):
     __tablename__ = "zone_entries"
@@ -92,8 +95,8 @@ class ZoneEntry(Base):
     sequence_number = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
-    event = relationship("GameEvent")
+    # Relationships with explicit foreign_keys
+    event = relationship("GameEvent", foreign_keys=[event_id])
     player = relationship("Player", foreign_keys=[player_id])
     defender = relationship("Player", foreign_keys=[defender_id])
 
@@ -113,8 +116,8 @@ class Pass(Base):
     angle_change = Column(Float, nullable=True)  # Change in angle of attack
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
-    event = relationship("GameEvent")
+    # Relationships with explicit foreign_keys
+    event = relationship("GameEvent", foreign_keys=[event_id])
     passer = relationship("Player", foreign_keys=[passer_id])
     recipient = relationship("Player", foreign_keys=[recipient_id])
     intercepted_by = relationship("Player", foreign_keys=[intercepted_by_id])
@@ -131,8 +134,8 @@ class PuckRecovery(Base):
     preceded_by_id = Column(Integer, ForeignKey("game_events.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
-    event = relationship("GameEvent")
+    # Relationships with explicit foreign_keys
+    event = relationship("GameEvent", foreign_keys=[event_id])
     player = relationship("Player")
     preceded_by = relationship("GameEvent", foreign_keys=[preceded_by_id])
 
@@ -176,7 +179,20 @@ class PowerPlay(Base):
     # Relationships
     game = relationship("Game")
     team = relationship("Team")
-    events = relationship("GameEvent", primaryjoin="and_(PowerPlay.game_id==GameEvent.game_id, PowerPlay.team_id==GameEvent.team_id, PowerPlay.start_time<=GameEvent.time_elapsed, PowerPlay.end_time>=GameEvent.time_elapsed, PowerPlay.period==GameEvent.period)")
+    
+    # Viewonly relationship with explicit join conditions using the foreign() annotation
+    # This creates a viewonly relationship that doesn't attempt to sync changes
+    events = relationship(
+        "GameEvent",
+        primaryjoin=and_(
+            foreign(game_id) == GameEvent.game_id,
+            foreign(team_id) == GameEvent.team_id,
+            foreign(start_time) <= GameEvent.time_elapsed,
+            foreign(end_time) >= GameEvent.time_elapsed,
+            foreign(period) == GameEvent.period
+        ),
+        viewonly=True
+    )
 
 class PlayerGameStats(Base):
     __tablename__ = "player_game_stats"

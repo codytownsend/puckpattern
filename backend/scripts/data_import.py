@@ -31,7 +31,7 @@ def import_teams(db: Session):
     """Import all NHL teams."""
     service = NHLImportService(db)
     teams = service.import_teams()
-    return len(teams)
+    return teams
 
 
 def import_roster(db: Session, team_id: int):

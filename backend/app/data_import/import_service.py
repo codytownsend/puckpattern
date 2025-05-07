@@ -22,24 +22,38 @@ class NHLImportService:
         self.fetcher = NHLDataFetcher()
         self.event_processor = EventProcessor(db)
     
-    def import_teams(self) -> int:
+    def import_teams(self) -> List[Team]:
         """
-        Import NHL teams using both static and live metadata sources.
+        Import NHL teams using the NHL Stats API.
 
         Returns:
-            int: Number of new teams imported
+            List[Team]: List of new teams imported
         """
         logger.info("Importing NHL teams")
 
         teams = self.fetcher.get_all_teams()
         team_metadata = self.fetcher.get_team_metadata()
-        imported_count = 0
+        imported_teams = []
 
         for team in teams:
-            team_id = team["id"]
+            team_id = team.get("id")
+            if not team_id:
+                continue
+                
+            # Convert team_id to string to match the database column type
+            team_id = str(team_id)
+                
             name = team.get("fullName")
+            if not name:
+                name = f"{team.get('locationName', '')} {team.get('teamName', '')}"
+                
             abbreviation = team.get("triCode")
+            if not abbreviation:
+                abbreviation = team.get("abbreviation")
+                
             franchise_id = team.get("franchiseId")
+            if franchise_id:
+                franchise_id = int(franchise_id)
 
             # Skip placeholder teams
             if not name or "To be determined" in name or abbreviation == "NHL":
@@ -54,19 +68,20 @@ class NHLImportService:
                     name=name,
                     abbreviation=abbreviation,
                     franchise_id=franchise_id,
-                    division=meta.get("divisionName"),
-                    conference=meta.get("conferenceName"),
-                    city_name=meta.get("placeName", {}).get("default"),
-                    venue_name=None,
-                    official_site_url=None,
+                    division=meta.get("division", {}).get("name"),
+                    conference=meta.get("conference", {}).get("name"),
+                    city_name=team.get("locationName"),
+                    team_name=team.get("teamName"),
+                    venue_name=team.get("venue", {}).get("default"),
+                    official_site_url=team.get("officialSiteUrl"),
                     active=True,
                 )
                 self.db.add(db_team)
-                imported_count += 1
+                imported_teams.append(db_team)
 
         self.db.commit()
-        logger.info(f"Imported {imported_count} teams")
-        return imported_count
+        logger.info(f"Imported {len(imported_teams)} teams")
+        return imported_teams
     
     def import_team_roster(self, team_abbrev: str) -> List[Player]:
         """
