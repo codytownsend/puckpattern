@@ -1,58 +1,180 @@
-2025-05-06 17:48:31,041 - __main__ - INFO - Starting import: teams
-2025-05-06 17:48:31,041 - app.data_import.import_service - INFO - Importing NHL teams
-2025-05-06 17:48:31,791 - app.data_import.import_service - INFO - Imported 0 teams
-2025-05-06 17:48:31,792 - __main__ - INFO - Imported 0 teams
-2025-05-06 17:48:31,792 - __main__ - INFO - Import completed in 0.75 seconds
-2025-05-06 17:53:27,381 - __main__ - INFO - Starting import: teams
-2025-05-06 17:53:27,382 - app.data_import.import_service - INFO - Importing NHL teams
-2025-05-06 17:53:28,071 - app.data_import.import_service - INFO - Imported 0 teams
-2025-05-06 17:53:28,071 - __main__ - INFO - Imported 0 teams
-2025-05-06 17:53:28,071 - __main__ - INFO - Import completed in 0.69 seconds
-2025-05-06 17:58:54,615 - __main__ - INFO - Starting import: teams
-2025-05-06 17:58:54,615 - app.data_import.import_service - INFO - Importing NHL teams
-2025-05-06 17:58:55,401 - __main__ - ERROR - Error during import: 'list' object has no attribute 'get'
-Traceback (most recent call last):
-  File "/Users/codytownsend/puckpattern/backend/scripts/data_import.py", line 124, in main
-    count = import_teams(db)
-  File "/Users/codytownsend/puckpattern/backend/scripts/data_import.py", line 33, in import_teams
-    teams = service.import_teams()
-  File "/Users/codytownsend/puckpattern/backend/app/data_import/import_service.py", line 33, in import_teams
-    nhl_teams = self.fetcher.get_teams()
-  File "/Users/codytownsend/puckpattern/backend/app/data_import/nhl_data_fetcher.py", line 49, in get_teams
-    return data.get("standings", {}).get("leagueStandings", [])
-AttributeError: 'list' object has no attribute 'get'
-2025-05-06 18:09:21,743 - __main__ - INFO - Starting import: teams
-2025-05-06 18:09:21,743 - app.data_import.import_service - INFO - Importing NHL teams
-2025-05-06 18:09:22,012 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api-web.nhle.com/v1/team: 404 Client Error: Not Found for url: https://api-web.nhle.com/v1/team
-2025-05-06 18:09:22,013 - app.data_import.import_service - INFO - Imported 0 teams
-2025-05-06 18:09:22,013 - __main__ - ERROR - Error during import: object of type 'int' has no len()
-Traceback (most recent call last):
-  File "/Users/codytownsend/puckpattern/backend/scripts/data_import.py", line 124, in main
-    count = import_teams(db)
-  File "/Users/codytownsend/puckpattern/backend/scripts/data_import.py", line 34, in import_teams
-    return len(teams)
-TypeError: object of type 'int' has no len()
-2025-05-06 18:16:05,792 - __main__ - INFO - Starting import: teams
-2025-05-06 18:16:05,792 - app.data_import.import_service - INFO - Importing NHL teams
-2025-05-06 18:16:06,011 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api-web.nhle.com/v1/team: 404 Client Error: Not Found for url: https://api-web.nhle.com/v1/team
-2025-05-06 18:16:06,163 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api-web.nhle.com/v1/https://api-web.nhle.com/v1/standings/now: 400 Client Error: Bad Request for url: https://api-web.nhle.com/v1/https://api-web.nhle.com/v1/standings/now
-2025-05-06 18:16:06,164 - app.data_import.import_service - INFO - Imported 0 teams
-2025-05-06 18:16:06,164 - __main__ - ERROR - Error during import: object of type 'int' has no len()
-Traceback (most recent call last):
-  File "/Users/codytownsend/puckpattern/backend/scripts/data_import.py", line 124, in main
-    count = import_teams(db)
-  File "/Users/codytownsend/puckpattern/backend/scripts/data_import.py", line 34, in import_teams
-    return len(teams)
-TypeError: object of type 'int' has no len()
-2025-05-06 18:17:09,809 - __main__ - INFO - Starting import: teams
-2025-05-06 18:17:09,809 - app.data_import.import_service - INFO - Importing NHL teams
-2025-05-06 18:17:10,012 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/en//team: 400 Client Error: Bad Request for url: https://api.nhle.com/stats/rest/en//team
-2025-05-06 18:17:10,339 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/en//https://api-web.nhle.com/v1/standings/now: 400 Client Error: Bad Request for url: https://api.nhle.com/stats/rest/en//https://api-web.nhle.com/v1/standings/now
-2025-05-06 18:17:10,341 - app.data_import.import_service - INFO - Imported 0 teams
-2025-05-06 18:17:10,341 - __main__ - ERROR - Error during import: object of type 'int' has no len()
-Traceback (most recent call last):
-  File "/Users/codytownsend/puckpattern/backend/scripts/data_import.py", line 124, in main
-    count = import_teams(db)
-  File "/Users/codytownsend/puckpattern/backend/scripts/data_import.py", line 34, in import_teams
-    return len(teams)
-TypeError: object of type 'int' has no len()
+2025-05-06 22:53:20,515 - __main__ - INFO - Starting import: roster
+2025-05-06 22:53:20,621 - app.data_import.import_service - INFO - Importing roster for team QUE for season 20232024
+2025-05-06 22:53:20,977 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/QUE/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/QUE/20232024
+2025-05-06 22:53:20,981 - app.data_import.import_service - INFO - Imported 0 players for team Quebec Nordiques
+2025-05-06 22:53:20,983 - app.data_import.import_service - INFO - Importing roster for team MTL for season 20232024
+2025-05-06 22:53:21,217 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/MTL/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/MTL/20232024
+2025-05-06 22:53:21,220 - app.data_import.import_service - INFO - Imported 0 players for team Montréal Canadiens
+2025-05-06 22:53:21,221 - app.data_import.import_service - INFO - Importing roster for team TSP for season 20232024
+2025-05-06 22:53:21,490 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/TSP/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/TSP/20232024
+2025-05-06 22:53:21,493 - app.data_import.import_service - INFO - Imported 0 players for team Toronto St. Patricks
+2025-05-06 22:53:21,494 - app.data_import.import_service - INFO - Importing roster for team BUF for season 20232024
+2025-05-06 22:53:21,729 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/BUF/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/BUF/20232024
+2025-05-06 22:53:21,734 - app.data_import.import_service - INFO - Imported 0 players for team Buffalo Sabres
+2025-05-06 22:53:21,736 - app.data_import.import_service - INFO - Importing roster for team OAK for season 20232024
+2025-05-06 22:53:21,865 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/OAK/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/OAK/20232024
+2025-05-06 22:53:21,867 - app.data_import.import_service - INFO - Imported 0 players for team Oakland Seals
+2025-05-06 22:53:21,869 - app.data_import.import_service - INFO - Importing roster for team KCS for season 20232024
+2025-05-06 22:53:22,105 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/KCS/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/KCS/20232024
+2025-05-06 22:53:22,108 - app.data_import.import_service - INFO - Imported 0 players for team Kansas City Scouts
+2025-05-06 22:53:22,109 - app.data_import.import_service - INFO - Importing roster for team NYI for season 20232024
+2025-05-06 22:53:22,240 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/NYI/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/NYI/20232024
+2025-05-06 22:53:22,243 - app.data_import.import_service - INFO - Imported 0 players for team New York Islanders
+2025-05-06 22:53:22,244 - app.data_import.import_service - INFO - Importing roster for team SEN for season 20232024
+2025-05-06 22:53:22,378 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/SEN/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/SEN/20232024
+2025-05-06 22:53:22,380 - app.data_import.import_service - INFO - Imported 0 players for team Ottawa Senators (1917)
+2025-05-06 22:53:22,382 - app.data_import.import_service - INFO - Importing roster for team ATL for season 20232024
+2025-05-06 22:53:22,526 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/ATL/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/ATL/20232024
+2025-05-06 22:53:22,529 - app.data_import.import_service - INFO - Imported 0 players for team Atlanta Thrashers
+2025-05-06 22:53:22,530 - app.data_import.import_service - INFO - Importing roster for team SLE for season 20232024
+2025-05-06 22:53:22,664 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/SLE/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/SLE/20232024
+2025-05-06 22:53:22,667 - app.data_import.import_service - INFO - Imported 0 players for team St. Louis Eagles
+2025-05-06 22:53:22,668 - app.data_import.import_service - INFO - Importing roster for team WIN for season 20232024
+2025-05-06 22:53:22,807 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/WIN/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/WIN/20232024
+2025-05-06 22:53:22,810 - app.data_import.import_service - INFO - Imported 0 players for team Winnipeg Jets (1979)
+2025-05-06 22:53:22,811 - app.data_import.import_service - INFO - Importing roster for team SJS for season 20232024
+2025-05-06 22:53:22,946 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/SJS/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/SJS/20232024
+2025-05-06 22:53:22,948 - app.data_import.import_service - INFO - Imported 0 players for team San Jose Sharks
+2025-05-06 22:53:22,949 - app.data_import.import_service - INFO - Importing roster for team QBD for season 20232024
+2025-05-06 22:53:23,122 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/QBD/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/QBD/20232024
+2025-05-06 22:53:23,125 - app.data_import.import_service - INFO - Imported 0 players for team Quebec Bulldogs
+2025-05-06 22:53:23,126 - app.data_import.import_service - INFO - Importing roster for team CBJ for season 20232024
+2025-05-06 22:53:23,260 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/CBJ/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/CBJ/20232024
+2025-05-06 22:53:23,262 - app.data_import.import_service - INFO - Imported 0 players for team Columbus Blue Jackets
+2025-05-06 22:53:23,263 - app.data_import.import_service - INFO - Importing roster for team ARI for season 20232024
+2025-05-06 22:53:23,400 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/ARI/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/ARI/20232024
+2025-05-06 22:53:23,403 - app.data_import.import_service - INFO - Imported 0 players for team Arizona Coyotes
+2025-05-06 22:53:23,404 - app.data_import.import_service - INFO - Importing roster for team FLA for season 20232024
+2025-05-06 22:53:23,533 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/FLA/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/FLA/20232024
+2025-05-06 22:53:23,535 - app.data_import.import_service - INFO - Imported 0 players for team Florida Panthers
+2025-05-06 22:53:23,537 - app.data_import.import_service - INFO - Importing roster for team CAR for season 20232024
+2025-05-06 22:53:23,669 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/CAR/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/CAR/20232024
+2025-05-06 22:53:23,672 - app.data_import.import_service - INFO - Imported 0 players for team Carolina Hurricanes
+2025-05-06 22:53:23,673 - app.data_import.import_service - INFO - Importing roster for team VGK for season 20232024
+2025-05-06 22:53:23,810 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/VGK/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/VGK/20232024
+2025-05-06 22:53:23,813 - app.data_import.import_service - INFO - Imported 0 players for team Vegas Golden Knights
+2025-05-06 22:53:23,815 - app.data_import.import_service - INFO - Importing roster for team DAL for season 20232024
+2025-05-06 22:53:23,959 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/DAL/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/DAL/20232024
+2025-05-06 22:53:23,962 - app.data_import.import_service - INFO - Imported 0 players for team Dallas Stars
+2025-05-06 22:53:23,962 - app.data_import.import_service - INFO - Importing roster for team WPG for season 20232024
+2025-05-06 22:53:24,091 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/WPG/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/WPG/20232024
+2025-05-06 22:53:24,094 - app.data_import.import_service - INFO - Imported 0 players for team Winnipeg Jets
+2025-05-06 22:53:24,096 - app.data_import.import_service - INFO - Importing roster for team TBL for season 20232024
+2025-05-06 22:53:24,233 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/TBL/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/TBL/20232024
+2025-05-06 22:53:24,236 - app.data_import.import_service - INFO - Imported 0 players for team Tampa Bay Lightning
+2025-05-06 22:53:24,237 - app.data_import.import_service - INFO - Importing roster for team NSH for season 20232024
+2025-05-06 22:53:24,366 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/NSH/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/NSH/20232024
+2025-05-06 22:53:24,369 - app.data_import.import_service - INFO - Imported 0 players for team Nashville Predators
+2025-05-06 22:53:24,370 - app.data_import.import_service - INFO - Importing roster for team PHX for season 20232024
+2025-05-06 22:53:24,524 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/PHX/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/PHX/20232024
+2025-05-06 22:53:24,527 - app.data_import.import_service - INFO - Imported 0 players for team Phoenix Coyotes
+2025-05-06 22:53:24,528 - app.data_import.import_service - INFO - Importing roster for team MWN for season 20232024
+2025-05-06 22:53:24,671 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/MWN/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/MWN/20232024
+2025-05-06 22:53:24,674 - app.data_import.import_service - INFO - Imported 0 players for team Montreal Wanderers
+2025-05-06 22:53:24,675 - app.data_import.import_service - INFO - Importing roster for team QUA for season 20232024
+2025-05-06 22:53:24,823 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/QUA/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/QUA/20232024
+2025-05-06 22:53:24,837 - app.data_import.import_service - INFO - Imported 0 players for team Philadelphia Quakers
+2025-05-06 22:53:24,838 - app.data_import.import_service - INFO - Importing roster for team HAM for season 20232024
+2025-05-06 22:53:24,971 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/HAM/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/HAM/20232024
+2025-05-06 22:53:24,974 - app.data_import.import_service - INFO - Imported 0 players for team Hamilton Tigers
+2025-05-06 22:53:24,975 - app.data_import.import_service - INFO - Importing roster for team DCG for season 20232024
+2025-05-06 22:53:25,114 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/DCG/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/DCG/20232024
+2025-05-06 22:53:25,116 - app.data_import.import_service - INFO - Imported 0 players for team Detroit Cougars
+2025-05-06 22:53:25,117 - app.data_import.import_service - INFO - Importing roster for team CLR for season 20232024
+2025-05-06 22:53:25,256 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/CLR/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/CLR/20232024
+2025-05-06 22:53:25,259 - app.data_import.import_service - INFO - Imported 0 players for team Colorado Rockies
+2025-05-06 22:53:25,260 - app.data_import.import_service - INFO - Importing roster for team PIR for season 20232024
+2025-05-06 22:53:25,394 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/PIR/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/PIR/20232024
+2025-05-06 22:53:25,397 - app.data_import.import_service - INFO - Imported 0 players for team Pittsburgh Pirates
+2025-05-06 22:53:25,398 - app.data_import.import_service - INFO - Importing roster for team HFD for season 20232024
+2025-05-06 22:53:25,531 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/HFD/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/HFD/20232024
+2025-05-06 22:53:25,534 - app.data_import.import_service - INFO - Imported 0 players for team Hartford Whalers
+2025-05-06 22:53:25,535 - app.data_import.import_service - INFO - Importing roster for team NJD for season 20232024
+2025-05-06 22:53:25,685 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/NJD/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/NJD/20232024
+2025-05-06 22:53:25,687 - app.data_import.import_service - INFO - Imported 0 players for team New Jersey Devils
+2025-05-06 22:53:25,689 - app.data_import.import_service - INFO - Importing roster for team OTT for season 20232024
+2025-05-06 22:53:25,814 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/OTT/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/OTT/20232024
+2025-05-06 22:53:25,817 - app.data_import.import_service - INFO - Imported 0 players for team Ottawa Senators
+2025-05-06 22:53:25,818 - app.data_import.import_service - INFO - Importing roster for team COL for season 20232024
+2025-05-06 22:53:25,954 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/COL/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/COL/20232024
+2025-05-06 22:53:25,957 - app.data_import.import_service - INFO - Imported 0 players for team Colorado Avalanche
+2025-05-06 22:53:25,958 - app.data_import.import_service - INFO - Importing roster for team NYA for season 20232024
+2025-05-06 22:53:26,095 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/NYA/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/NYA/20232024
+2025-05-06 22:53:26,098 - app.data_import.import_service - INFO - Imported 0 players for team New York Americans
+2025-05-06 22:53:26,099 - app.data_import.import_service - INFO - Importing roster for team WSH for season 20232024
+2025-05-06 22:53:26,229 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/WSH/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/WSH/20232024
+2025-05-06 22:53:26,231 - app.data_import.import_service - INFO - Imported 0 players for team Washington Capitals
+2025-05-06 22:53:26,233 - app.data_import.import_service - INFO - Importing roster for team MNS for season 20232024
+2025-05-06 22:53:26,362 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/MNS/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/MNS/20232024
+2025-05-06 22:53:26,365 - app.data_import.import_service - INFO - Imported 0 players for team Minnesota North Stars
+2025-05-06 22:53:26,366 - app.data_import.import_service - INFO - Importing roster for team LAK for season 20232024
+2025-05-06 22:53:26,499 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/LAK/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/LAK/20232024
+2025-05-06 22:53:26,502 - app.data_import.import_service - INFO - Imported 0 players for team Los Angeles Kings
+2025-05-06 22:53:26,503 - app.data_import.import_service - INFO - Importing roster for team MIN for season 20232024
+2025-05-06 22:53:26,636 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/MIN/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/MIN/20232024
+2025-05-06 22:53:26,639 - app.data_import.import_service - INFO - Imported 0 players for team Minnesota Wild
+2025-05-06 22:53:26,640 - app.data_import.import_service - INFO - Importing roster for team MMR for season 20232024
+2025-05-06 22:53:26,780 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/MMR/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/MMR/20232024
+2025-05-06 22:53:26,782 - app.data_import.import_service - INFO - Imported 0 players for team Montreal Maroons
+2025-05-06 22:53:26,784 - app.data_import.import_service - INFO - Importing roster for team CLE for season 20232024
+2025-05-06 22:53:26,925 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/CLE/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/CLE/20232024
+2025-05-06 22:53:26,928 - app.data_import.import_service - INFO - Imported 0 players for team Cleveland Barons
+2025-05-06 22:53:26,929 - app.data_import.import_service - INFO - Importing roster for team BRK for season 20232024
+2025-05-06 22:53:27,060 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/BRK/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/BRK/20232024
+2025-05-06 22:53:27,064 - app.data_import.import_service - INFO - Imported 0 players for team Brooklyn Americans
+2025-05-06 22:53:27,065 - app.data_import.import_service - INFO - Importing roster for team DFL for season 20232024
+2025-05-06 22:53:27,194 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/DFL/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/DFL/20232024
+2025-05-06 22:53:27,197 - app.data_import.import_service - INFO - Imported 0 players for team Detroit Falcons
+2025-05-06 22:53:27,198 - app.data_import.import_service - INFO - Importing roster for team CGS for season 20232024
+2025-05-06 22:53:27,330 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/CGS/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/CGS/20232024
+2025-05-06 22:53:27,333 - app.data_import.import_service - INFO - Imported 0 players for team California Golden Seals
+2025-05-06 22:53:27,334 - app.data_import.import_service - INFO - Importing roster for team TOR for season 20232024
+2025-05-06 22:53:27,510 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/TOR/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/TOR/20232024
+2025-05-06 22:53:27,513 - app.data_import.import_service - INFO - Imported 0 players for team Toronto Maple Leafs
+2025-05-06 22:53:27,514 - app.data_import.import_service - INFO - Importing roster for team EDM for season 20232024
+2025-05-06 22:53:27,657 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/EDM/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/EDM/20232024
+2025-05-06 22:53:27,659 - app.data_import.import_service - INFO - Imported 0 players for team Edmonton Oilers
+2025-05-06 22:53:27,660 - app.data_import.import_service - INFO - Importing roster for team AFM for season 20232024
+2025-05-06 22:53:27,792 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/AFM/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/AFM/20232024
+2025-05-06 22:53:27,795 - app.data_import.import_service - INFO - Imported 0 players for team Atlanta Flames
+2025-05-06 22:53:27,796 - app.data_import.import_service - INFO - Importing roster for team TAN for season 20232024
+2025-05-06 22:53:27,920 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/TAN/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/TAN/20232024
+2025-05-06 22:53:27,922 - app.data_import.import_service - INFO - Imported 0 players for team Toronto Arenas
+2025-05-06 22:53:27,924 - app.data_import.import_service - INFO - Importing roster for team CGY for season 20232024
+2025-05-06 22:53:28,051 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/CGY/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/CGY/20232024
+2025-05-06 22:53:28,053 - app.data_import.import_service - INFO - Imported 0 players for team Calgary Flames
+2025-05-06 22:53:28,054 - app.data_import.import_service - INFO - Importing roster for team BOS for season 20232024
+2025-05-06 22:53:28,188 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/BOS/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/BOS/20232024
+2025-05-06 22:53:28,191 - app.data_import.import_service - INFO - Imported 0 players for team Boston Bruins
+2025-05-06 22:53:28,192 - app.data_import.import_service - INFO - Importing roster for team STL for season 20232024
+2025-05-06 22:53:28,326 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/STL/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/STL/20232024
+2025-05-06 22:53:28,329 - app.data_import.import_service - INFO - Imported 0 players for team St. Louis Blues
+2025-05-06 22:53:28,330 - app.data_import.import_service - INFO - Importing roster for team CHI for season 20232024
+2025-05-06 22:53:28,460 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/CHI/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/CHI/20232024
+2025-05-06 22:53:28,463 - app.data_import.import_service - INFO - Imported 0 players for team Chicago Blackhawks
+2025-05-06 22:53:28,464 - app.data_import.import_service - INFO - Importing roster for team DET for season 20232024
+2025-05-06 22:53:28,595 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/DET/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/DET/20232024
+2025-05-06 22:53:28,598 - app.data_import.import_service - INFO - Imported 0 players for team Detroit Red Wings
+2025-05-06 22:53:28,599 - app.data_import.import_service - INFO - Importing roster for team PHI for season 20232024
+2025-05-06 22:53:28,730 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/PHI/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/PHI/20232024
+2025-05-06 22:53:28,732 - app.data_import.import_service - INFO - Imported 0 players for team Philadelphia Flyers
+2025-05-06 22:53:28,734 - app.data_import.import_service - INFO - Importing roster for team ANA for season 20232024
+2025-05-06 22:53:28,854 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/ANA/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/ANA/20232024
+2025-05-06 22:53:28,857 - app.data_import.import_service - INFO - Imported 0 players for team Anaheim Ducks
+2025-05-06 22:53:28,858 - app.data_import.import_service - INFO - Importing roster for team SEA for season 20232024
+2025-05-06 22:53:28,985 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/SEA/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/SEA/20232024
+2025-05-06 22:53:28,988 - app.data_import.import_service - INFO - Imported 0 players for team Seattle Kraken
+2025-05-06 22:53:28,989 - app.data_import.import_service - INFO - Importing roster for team UTA for season 20232024
+2025-05-06 22:53:29,125 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/UTA/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/UTA/20232024
+2025-05-06 22:53:29,128 - app.data_import.import_service - INFO - Imported 0 players for team Utah Hockey Club
+2025-05-06 22:53:29,129 - app.data_import.import_service - INFO - Importing roster for team PIT for season 20232024
+2025-05-06 22:53:29,255 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/PIT/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/PIT/20232024
+2025-05-06 22:53:29,258 - app.data_import.import_service - INFO - Imported 0 players for team Pittsburgh Penguins
+2025-05-06 22:53:29,259 - app.data_import.import_service - INFO - Importing roster for team VAN for season 20232024
+2025-05-06 22:53:29,388 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/VAN/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/VAN/20232024
+2025-05-06 22:53:29,391 - app.data_import.import_service - INFO - Imported 0 players for team Vancouver Canucks
+2025-05-06 22:53:29,392 - app.data_import.import_service - INFO - Importing roster for team NYR for season 20232024
+2025-05-06 22:53:29,514 - app.data_import.nhl_data_fetcher - ERROR - Error fetching https://api.nhle.com/stats/rest/roster/NYR/20232024: 404 Client Error: Not Found for url: https://api.nhle.com/stats/rest/roster/NYR/20232024
+2025-05-06 22:53:29,516 - app.data_import.import_service - INFO - Imported 0 players for team New York Rangers
+2025-05-06 22:53:29,516 - __main__ - INFO - Imported 0 players across all teams
+2025-05-06 22:53:29,516 - __main__ - INFO - Import completed in 9.00 seconds

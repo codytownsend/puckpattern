@@ -3,7 +3,8 @@ from datetime import datetime, date
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_, or_, desc, asc
 
-from app.models.base import Game, Team
+from app.models.base import Team
+from app.models.analytics import Game
 from app.models.analytics import TeamGameStats, PlayerGameStats
 from app.schemas.game import GameCreate, GameUpdate
 

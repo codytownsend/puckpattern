@@ -83,17 +83,18 @@ class NHLImportService:
         logger.info(f"Imported {len(imported_teams)} teams")
         return imported_teams
     
-    def import_team_roster(self, team_abbrev: str) -> List[Player]:
+    def import_team_roster(self, team_abbrev: str, season: Optional[str] = None) -> List[Player]:
         """
-        Import roster for a specific team.
+        Import roster for a specific team and season.
         
         Args:
             team_abbrev: NHL team abbreviation (e.g., "EDM")
+            season: Season in format "20222023" (optional, defaults to current)
             
         Returns:
             List of imported players
         """
-        logger.info(f"Importing roster for team {team_abbrev}")
+        logger.info(f"Importing roster for team {team_abbrev}{' for season ' + season if season else ''}")
         
         # Get the team from the database
         db_team = self.db.query(Team).filter(Team.abbreviation == team_abbrev).first()
@@ -101,8 +102,11 @@ class NHLImportService:
             logger.error(f"Team {team_abbrev} not found in database")
             return []
         
-        # Fetch roster from NHL API
-        roster_data = self.fetcher.get_team_roster(team_abbrev)
+        # Fetch roster from NHL API - either current or by season
+        if season:
+            roster_data = self.fetcher.get_team_roster_by_season(team_abbrev, season)
+        else:
+            roster_data = self.fetcher.get_team_roster(team_abbrev)
         
         players = []
         # Process all roster sections: forwards, defensemen, goalies
@@ -110,13 +114,26 @@ class NHLImportService:
             player_id = str(player_data["playerId"])
             position = player_data["position"]
             
-            # Check if player already exists
-            db_player = self.db.query(Player).filter(Player.player_id == player_id).first()
+            # Check if player exists with this team for this season
+            if season:
+                # Look up player historical assignment
+                player_team_season = self.db.query(PlayerTeamSeason).filter(
+                    PlayerTeamSeason.player_id == player_id,
+                    PlayerTeamSeason.team_id == db_team.id,
+                    PlayerTeamSeason.season == season
+                ).first()
+                
+                # Get or create the player regardless of team assignment
+                db_player = self.db.query(Player).filter(Player.player_id == player_id).first()
+            else:
+                # For current roster, just look up the player
+                db_player = self.db.query(Player).filter(Player.player_id == player_id).first()
+                player_team_season = None
             
+            # Create or update player record
             if db_player:
                 # Update existing player
                 db_player.name = player_data["playerName"]["default"]
-                db_player.team_id = db_team.id
                 db_player.position = position
                 
                 # Update additional fields
@@ -143,7 +160,6 @@ class NHLImportService:
                 db_player = Player(
                     player_id=player_id,
                     name=player_data["playerName"]["default"],
-                    team_id=db_team.id,
                     position=position,
                     player_slug=player_data.get("playerSlug"),
                     sweater_number=player_data.get("playerNum"),
@@ -161,6 +177,20 @@ class NHLImportService:
                 )
                 self.db.add(db_player)
                 logger.debug(f"Created player: {db_player.name}")
+            
+            # Update or create player-team-season relationship
+            if season:
+                if not player_team_season:
+                    player_team_season = PlayerTeamSeason(
+                        player_id=player_id,
+                        team_id=db_team.id,
+                        season=season
+                    )
+                    self.db.add(player_team_season)
+                    logger.debug(f"Created player-team-season: {db_player.name} - {db_team.name} - {season}")
+            else:
+                # For current roster, update the player's current team
+                db_player.team_id = db_team.id
             
             players.append(db_player)
         

@@ -2,7 +2,8 @@ from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_, or_, desc, asc
 
-from app.models.base import GameEvent, Team, Player, Game
+from app.models.analytics import Game
+from app.models.base import GameEvent, Team, Player
 from app.schemas.event import EventCreate, EventUpdate
 
 

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, JSON, Table
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, JSON, Table, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func, and_, or_
 from sqlalchemy.orm import relationship, foreign
@@ -358,3 +358,28 @@ class PlayerProfile(Base):
     
     # Relationships
     player = relationship("Player")
+
+class PlayerTeamSeason(Base):
+    __tablename__ = "player_team_seasons"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    player_id = Column(String, ForeignKey("players.player_id"))
+    team_id = Column(Integer, ForeignKey("teams.id"))
+    season = Column(String)
+    
+    # Additional fields you might want
+    jersey_number = Column(String, nullable=True)
+    captain = Column(Boolean, default=False)
+    alternate_captain = Column(Boolean, default=False)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    player = relationship("Player")
+    team = relationship("Team")
+    
+    # Add a unique constraint to prevent duplicates
+    __table_args__ = (
+        UniqueConstraint('player_id', 'team_id', 'season', name='uq_player_team_season'),
+    )
