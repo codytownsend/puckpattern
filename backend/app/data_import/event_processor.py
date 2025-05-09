@@ -36,7 +36,8 @@ class EventProcessor:
             return None
         
         # Get period and time
-        period = play_data.get("period")
+        period_descriptor = play_data.get("periodDescriptor", {})
+        period = period_descriptor.get("number")
         time_in_period = play_data.get("timeInPeriod")
         time_remaining = play_data.get("timeRemaining")
         

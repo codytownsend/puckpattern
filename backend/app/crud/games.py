@@ -21,7 +21,7 @@ def get_games(
     game_type: Optional[int] = None,
     sort_by: str = "date",
     sort_desc: bool = True
-) -> List[Game]:
+) -> List[Dict[str, Any]]:  # Changed return type to list
     """
     Get games with various filters.
     """
@@ -30,12 +30,13 @@ def get_games(
         joinedload(Game.away_team)
     )
     
+    # Apply filters
     if season:
         query = query.filter(Game.season == season)
     
     if team_id:
         # Get the internal team ID first
-        team = db.query(Team).filter(Team.team_id == team_id).first()
+        team = db.query(Team).filter(Team.team_id == str(team_id)).first()
         if team:
             # Find games where this team is either home or away
             query = query.filter(
@@ -73,11 +74,48 @@ def get_games(
             query = query.order_by(desc(Game.away_score))
         else:
             query = query.order_by(asc(Game.away_score))
-    # Add other sorting options as needed
     
-    if limit:
-        return query.offset(skip).limit(limit).all()
-    return query.offset(skip).all()
+    # Apply pagination and get games
+    games = query.offset(skip).limit(limit).all() if limit else query.offset(skip).all()
+    
+    # Format the games as dictionaries
+    game_list = []
+    for game in games:
+        game_dict = {
+            "id": game.id,
+            "game_id": game.game_id,
+            "home_team_id": game.home_team_id,
+            "away_team_id": game.away_team_id,
+            "date": game.date,
+            "season": game.season,
+            "status": game.status,
+            "period": game.period,
+            "time_remaining": game.time_remaining,
+            "home_score": game.home_score,
+            "away_score": game.away_score,
+            "venue_name": game.venue_name,
+            "venue_city": game.venue_city,
+            "game_type": game.game_type,
+            "neutral_site": game.neutral_site,
+            "created_at": game.created_at,
+            "updated_at": game.updated_at,
+            "home_team": {
+                "id": game.home_team.id,
+                "team_id": game.home_team.team_id,
+                "name": game.home_team.name,
+                "abbreviation": game.home_team.abbreviation
+            } if game.home_team else None,
+            "away_team": {
+                "id": game.away_team.id,
+                "team_id": game.away_team.team_id,
+                "name": game.away_team.name,
+                "abbreviation": game.away_team.abbreviation
+            } if game.away_team else None
+        }
+        game_list.append(game_dict)
+    
+    # Return just the list of games, letting the API endpoint handle the rest
+    return game_list
 
 
 def get_game_by_id(db: Session, game_id: int) -> Optional[Game]:
@@ -87,14 +125,53 @@ def get_game_by_id(db: Session, game_id: int) -> Optional[Game]:
     return db.query(Game).filter(Game.id == game_id).first()
 
 
-def get_game_by_game_id(db: Session, game_id: int) -> Optional[Game]:
+def get_game_by_game_id(db: Session, game_id: int) -> Optional[Dict[str, Any]]:
     """
     Get a game by external game_id (e.g., NHL API ID).
     """
-    return db.query(Game).options(
+    # Convert the integer game_id to string for comparison
+    game = db.query(Game).options(
         joinedload(Game.home_team),
         joinedload(Game.away_team)
-    ).filter(Game.game_id == game_id).first()
+    ).filter(Game.game_id == str(game_id)).first()
+    
+    if not game:
+        return None
+    
+    # Create a dictionary representation of the game
+    game_dict = {
+        "id": game.id,
+        "game_id": game.game_id,
+        "home_team_id": game.home_team_id,
+        "away_team_id": game.away_team_id,
+        "date": game.date,
+        "season": game.season,
+        "status": game.status,
+        "period": game.period,
+        "time_remaining": game.time_remaining,
+        "home_score": game.home_score,
+        "away_score": game.away_score,
+        "venue_name": game.venue_name,
+        "venue_city": game.venue_city,
+        "game_type": game.game_type,
+        "neutral_site": game.neutral_site,
+        "created_at": game.created_at,
+        "updated_at": game.updated_at,
+        "home_team": {
+            "id": game.home_team.id,
+            "team_id": game.home_team.team_id,
+            "name": game.home_team.name,
+            "abbreviation": game.home_team.abbreviation
+        } if game.home_team else None,
+        "away_team": {
+            "id": game.away_team.id,
+            "team_id": game.away_team.team_id,
+            "name": game.away_team.name,
+            "abbreviation": game.away_team.abbreviation
+        } if game.away_team else None
+    }
+    
+    return game_dict
 
 
 def create_game(db: Session, game: GameCreate) -> Game:
@@ -181,52 +258,62 @@ def get_game_stats(db: Session, game_id: int) -> Dict[str, Any]:
     """
     Get detailed statistics for a game.
     """
-    db_game = get_game_by_game_id(db, game_id)
-    if not db_game:
+    # Instead of using get_game_by_game_id which now returns a dict,
+    # query the database directly
+    game = db.query(Game).options(
+        joinedload(Game.home_team),
+        joinedload(Game.away_team)
+    ).filter(Game.game_id == str(game_id)).first()
+    
+    if not game:
         return {"error": "Game not found"}
     
     # Get team stats for this game
     home_team_stats = db.query(TeamGameStats).filter(
         and_(
-            TeamGameStats.game_id == db_game.id,
-            TeamGameStats.team_id == db_game.home_team_id
+            TeamGameStats.game_id == game.id,
+            TeamGameStats.team_id == game.home_team_id
         )
     ).first()
     
     away_team_stats = db.query(TeamGameStats).filter(
         and_(
-            TeamGameStats.game_id == db_game.id,
-            TeamGameStats.team_id == db_game.away_team_id
+            TeamGameStats.game_id == game.id,
+            TeamGameStats.team_id == game.away_team_id
         )
     ).first()
     
     # Basic game info
     game_info = {
-        "id": db_game.id,
-        "game_id": db_game.game_id,
-        "date": db_game.date,
-        "season": db_game.season,
-        "status": db_game.status,
-        "period": db_game.period,
-        "time_remaining": db_game.time_remaining,
-        "home_score": db_game.home_score,
-        "away_score": db_game.away_score,
-        "venue_name": db_game.venue_name,
-        "venue_city": db_game.venue_city,
-        "game_type": db_game.game_type,
-        "neutral_site": db_game.neutral_site,
+        "id": game.id,
+        "game_id": game.game_id,
+        "date": game.date,
+        "season": game.season,
+        "status": game.status,
+        "period": game.period,
+        "time_remaining": game.time_remaining,
+        "home_score": game.home_score,
+        "away_score": game.away_score,
+        "venue_name": game.venue_name,
+        "venue_city": game.venue_city,
+        "game_type": game.game_type,
+        "neutral_site": game.neutral_site,
+        "home_team_id": game.home_team_id,
+        "away_team_id": game.away_team_id,
+        "created_at": game.created_at,
+        "updated_at": game.updated_at,
         "home_team": {
-            "id": db_game.home_team.id,
-            "team_id": db_game.home_team.team_id,
-            "name": db_game.home_team.name,
-            "abbreviation": db_game.home_team.abbreviation
-        },
+            "id": game.home_team.id,
+            "team_id": game.home_team.team_id,
+            "name": game.home_team.name,
+            "abbreviation": game.home_team.abbreviation
+        } if game.home_team else None,
         "away_team": {
-            "id": db_game.away_team.id,
-            "team_id": db_game.away_team.team_id,
-            "name": db_game.away_team.name,
-            "abbreviation": db_game.away_team.abbreviation
-        }
+            "id": game.away_team.id,
+            "team_id": game.away_team.team_id,
+            "name": game.away_team.name,
+            "abbreviation": game.away_team.abbreviation
+        } if game.away_team else None
     }
     
     # Add team stats if available
@@ -276,15 +363,15 @@ def get_game_stats(db: Session, game_id: int) -> Dict[str, Any]:
     else:
         game_info["away_team_stats"] = None
     
-    # Get player stats
+    # Get scoring summary
     from app.models.analytics import ShotEvent
     
-    # Get scoring summary
+    # Get goals for this game
     goals = db.query(ShotEvent).join(
         GameEvent, ShotEvent.event_id == GameEvent.id
     ).filter(
         and_(
-            GameEvent.game_id == db_game.game_id,
+            GameEvent.game_id == game.game_id,
             ShotEvent.goal == True
         )
     ).order_by(
@@ -306,7 +393,7 @@ def get_game_stats(db: Session, game_id: int) -> Dict[str, Any]:
             }
         
         # Determine if home or away goal
-        is_home_goal = (event.team_id == db_game.home_team_id)
+        is_home_goal = (event.team_id == game.home_team_id)
         
         if is_home_goal:
             periods[period]["home_goals"] += 1
@@ -346,7 +433,7 @@ def get_game_stats(db: Session, game_id: int) -> Dict[str, Any]:
                 "name": secondary_assist.name if secondary_assist else None,
                 "sweater_number": secondary_assist.sweater_number if secondary_assist else None
             } if secondary_assist else None,
-            "strength": goal.event.situation_code or "EV"
+            "strength": event.situation_code or "EV"
         })
     
     # Format periods for response
