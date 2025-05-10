@@ -28,7 +28,7 @@ def get_events(
     )
     
     if game_id:
-        query = query.filter(GameEvent.game_id == game_id)
+        query = query.filter(GameEvent.game_id == str(game_id))
     
     if team_id:
         # Get the internal team ID first
@@ -37,8 +37,8 @@ def get_events(
             query = query.filter(GameEvent.team_id == team.id)
     
     if player_id:
-        # Get the internal player ID first
-        player = db.query(Player).filter(Player.player_id == player_id).first()
+        # Get the internal player ID first - convert to string for comparison
+        player = db.query(Player).filter(Player.player_id == str(player_id)).first()
         if player:
             query = query.filter(GameEvent.player_id == player.id)
     
@@ -169,11 +169,10 @@ def delete_event(db: Session, event_id: int) -> bool:
 
 
 def get_game_play_by_play(db: Session, game_id: int) -> List[Dict[str, Any]]:
-    """
-    Get a chronological play-by-play list of events for a game.
-    """
+    """Get a chronological play-by-play list of events for a game."""
     # First, check if the game exists
-    game = db.query(Game).filter(Game.game_id == game_id).first()
+    game = db.query(Game).filter(Game.game_id == str(game_id)).first()
+
     if not game:
         return []
     
@@ -200,7 +199,12 @@ def get_game_play_by_play(db: Session, game_id: int) -> List[Dict[str, Any]]:
             },
             "team": None,
             "player": None,
-            # Add more fields as needed
+            "situation_code": event.situation_code,
+            "strength": {"code": event.strength_code} if event.strength_code else None,
+            "is_scoring_play": event.is_scoring_play,
+            "is_penalty": event.is_penalty, 
+            "details": {}
+            # Add any other missing required fields based on your schema
         }
         
         # Add team information if available

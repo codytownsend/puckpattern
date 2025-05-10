@@ -69,7 +69,7 @@ class PlayByPlayEvent(BaseModel):
     event_type: str
     period: int
     time_elapsed: float
-    time_remaining: str
+    time_remaining: Optional[str] = None
     coordinates: Dict[str, Optional[float]]
     team: Optional[Dict[str, Any]] = None
     player: Optional[Dict[str, Any]] = None

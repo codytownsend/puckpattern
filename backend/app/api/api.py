@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.endpoints import teams, players, games, shots, entries, metrics
+from app.api.endpoints import teams, players, games, shots, entries, metrics, event
 
 api_router = APIRouter()
 
@@ -12,6 +12,7 @@ api_router.include_router(games.router, prefix="/games", tags=["games"])
 # Event data endpoints
 api_router.include_router(shots.router, prefix="/shots", tags=["shots"])
 api_router.include_router(entries.router, prefix="/entries", tags=["zone entries"])
+api_router.include_router(event.router, prefix="/events", tags=["events"])
 
 # Analytics endpoints
 api_router.include_router(metrics.router, prefix="/metrics", tags=["metrics"])

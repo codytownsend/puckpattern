@@ -3,9 +3,9 @@ from datetime import datetime, date
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_, or_, desc, asc
 
-from app.models.base import Team
+from app.models.base import Team, GameEvent, Player
 from app.models.analytics import Game
-from app.models.analytics import TeamGameStats, PlayerGameStats
+from app.models.analytics import TeamGameStats, PlayerGameStats, ShotEvent
 from app.schemas.game import GameCreate, GameUpdate
 
 
@@ -362,9 +362,6 @@ def get_game_stats(db: Session, game_id: int) -> Dict[str, Any]:
         }
     else:
         game_info["away_team_stats"] = None
-    
-    # Get scoring summary
-    from app.models.analytics import ShotEvent
     
     # Get goals for this game
     goals = db.query(ShotEvent).join(

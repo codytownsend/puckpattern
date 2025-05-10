@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, Date
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
@@ -67,3 +68,5 @@ class GameEvent(Base):
     sort_order = Column(Integer)  # For ordering events chronologically
     event_id = Column(Integer)  # NHL event ID
     time_remaining = Column(String)  # Time remaining in period
+    player = relationship("Player", foreign_keys=[player_id])
+    team = relationship("Team", foreign_keys=[team_id])
