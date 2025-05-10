@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.team import Team, TeamCreate, TeamUpdate, TeamWithStats, TeamList
 from app.crud import teams as crud_teams
+from app.services.metrics_service import MetricsService
+from app.services.sequence_service import SequenceService
 
 router = APIRouter()
 
@@ -99,3 +101,39 @@ def get_team_stats(
     if "error" in stats:
         raise HTTPException(status_code=404, detail=stats["error"])
     return stats
+
+@router.get("/{team_id}/analytics", response_model=TeamAnalytics)
+def get_team_analytics(
+    team_id: int,
+    game_id: Optional[int] = None,
+    season: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Get comprehensive analytics for a team
+    """
+    metrics_service = MetricsService(db)
+    sequence_service = SequenceService(db)
+    
+    # Get team
+    team = crud_teams.get_team_by_team_id(db, team_id=team_id)
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    
+    # Calculate metrics
+    ecr = metrics_service.calculate_ecr(team_id=team.id, game_id=game_id)
+    pri = metrics_service.calculate_pri(team_id=team.id, game_id=game_id)
+    pdi = metrics_service.calculate_pdi(team_id=team.id, game_id=game_id)
+    
+    # Get shot metrics
+    shot_metrics = metrics_service.calculate_shot_metrics(team_id=team.id, game_id=game_id)
+    
+    return {
+        "team_id": team_id,
+        "name": team.name,
+        "abbreviation": team.abbreviation,
+        "ecr": ecr,
+        "pri": pri,
+        "pdi": pdi,
+        "shot_metrics": shot_metrics
+    }

@@ -18,99 +18,121 @@ class MetricsService:
     def __init__(self, db: Session):
         self.db = db
     
-    def calculate_ecr(self, player_id: Optional[int] = None, team_id: Optional[int] = None, game_id: Optional[int] = None) -> float:
+    def calculate_ecr(self, player_id=None, team_id=None, game_id=None):
         """
-        Calculate Entry Conversion Rate (ECR).
-        
-        Args:
-            player_id: Filter by player
-            team_id: Filter by team
-            game_id: Filter by game
-            
-        Returns:
-            ECR value (0-1)
+        Calculate Entry Conversion Rate: 
+        # of controlled entries leading to a shot/chance within 10s / total controlled entries
         """
-        # Base query for zone entries
-        query = self.db.query(ZoneEntry)
+        # Query zone entries - use self.db.query instead of just query
+        query = self.db.query(ZoneEntry).filter(ZoneEntry.controlled == True)
         
         # Apply filters
         if player_id:
             query = query.filter(ZoneEntry.player_id == player_id)
-        
         if team_id:
-            query = query.join(ZoneEntry.event).filter(ZoneEntry.event.has(team_id=team_id))
-        
+            query = query.join(GameEvent).filter(GameEvent.team_id == team_id)
         if game_id:
-            query = query.join(ZoneEntry.event).filter(ZoneEntry.event.has(game_id=game_id))
+            query = query.join(GameEvent).filter(GameEvent.game_id == game_id)
         
-        # Get controlled entries only
-        entries = query.filter(ZoneEntry.controlled == True).all()
+        entries = query.all()
         
-        # Calculate ECR
-        total_controlled_entries = len(entries)
+        # Calculate successful entries (led to shot/chance)
+        total_entries = len(entries)
         successful_entries = sum(1 for entry in entries if entry.lead_to_shot)
         
-        if total_controlled_entries == 0:
-            return 0.0
-        
-        return successful_entries / total_controlled_entries
+        return successful_entries / total_entries if total_entries > 0 else 0
     
-    def calculate_pri(self, player_id: Optional[int] = None, team_id: Optional[int] = None, game_id: Optional[int] = None) -> float:
+    def calculate_pri(db, player_id=None, team_id=None, game_id=None):
         """
-        Calculate Puck Recovery Impact (PRI).
-        
-        Args:
-            player_id: Filter by player
-            team_id: Filter by team
-            game_id: Filter by game
-            
-        Returns:
-            PRI value
+        Calculate Puck Recovery Impact:
+        Weighted sum of recoveries based on zone, outcome, and type
         """
-        # Base query for puck recoveries
-        query = self.db.query(PuckRecovery)
+        # Query recoveries
+        query = db.query(PuckRecovery)
         
         # Apply filters
         if player_id:
             query = query.filter(PuckRecovery.player_id == player_id)
-        
         if team_id:
-            query = query.join(PuckRecovery.event).filter(PuckRecovery.event.has(team_id=team_id))
-        
+            query = query.join(GameEvent).filter(GameEvent.team_id == team_id)
         if game_id:
-            query = query.join(PuckRecovery.event).filter(PuckRecovery.event.has(game_id=game_id))
-        
-        # Get recoveries
+            query = query.join(GameEvent).filter(GameEvent.game_id == game_id)
+            
         recoveries = query.all()
         
-        # Calculate PRI (simplified version)
-        pri_score = 0.0
-        
+        pri_score = 0
         for recovery in recoveries:
-            # Weight based on zone
-            zone_weight = 1.0
-            if recovery.zone == "OZ":
-                zone_weight = 2.0  # Offensive zone recoveries are more valuable
-            elif recovery.zone == "DZ":
-                zone_weight = 0.5  # Defensive zone recoveries less valuable
+            # Zone weights
+            zone_weight = {
+                "OZ": 2.0,  # Offensive zone recoveries more valuable
+                "NZ": 1.0,  # Neutral zone standard value
+                "DZ": 0.5   # Defensive zone less valuable for offense
+            }.get(recovery.zone, 1.0)
             
-            # Weight based on outcome
-            outcome_weight = 1.0
-            if recovery.lead_to_possession:
-                outcome_weight = 1.5  # Recoveries leading to possession are more valuable
+            # Type weights
+            type_weight = {
+                "takeaway": 2.0,     # Takeaways most valuable
+                "forecheck": 1.5,    # Forecheck recoveries valuable
+                "loose": 1.0         # Loose puck recoveries standard value
+            }.get(recovery.recovery_type, 1.0)
             
-            # Recovery type weight
-            type_weight = 1.0
-            if recovery.recovery_type == "forecheck":
-                type_weight = 1.5  # Forecheck recoveries are more valuable
-            elif recovery.recovery_type == "takeaway":
-                type_weight = 2.0  # Takeaways are most valuable
+            # Outcome weight
+            outcome_weight = 1.5 if recovery.lead_to_possession else 1.0
             
-            # Add to total score
-            pri_score += zone_weight * outcome_weight * type_weight
-        
+            pri_score += zone_weight * type_weight * outcome_weight
+            
         return pri_score
     
+    def calculate_xg_delta_psm(db, player_id=None, team_id=None, game_id=None):
+        """
+        Calculate xGΔPSM: The increase in expected goals due to passes
+        """
+        # Query passes that led to shots
+        query = db.query(Pass).join(GameEvent).filter(Pass.completed == True)
+        
+        # Apply filters
+        if player_id:
+            query = query.filter(Pass.passer_id == player_id)
+        if team_id:
+            query = query.filter(GameEvent.team_id == team_id)
+        if game_id:
+            query = query.filter(GameEvent.game_id == game_id)
+        
+        passes = query.all()
+        
+        total_xg_delta = 0.0
+        
+        for pass_event in passes:
+            # Find shot that followed this pass within 3 seconds
+            pass_game_event = db.query(GameEvent).filter(GameEvent.id == pass_event.event_id).first()
+            
+            shots = db.query(ShotEvent).join(GameEvent).filter(
+                GameEvent.game_id == pass_game_event.game_id,
+                GameEvent.period == pass_game_event.period,
+                GameEvent.time_elapsed > pass_game_event.time_elapsed,
+                GameEvent.time_elapsed <= pass_game_event.time_elapsed + 3.0
+            ).all()
+            
+            if shots:
+                # Found a shot after the pass
+                shot = shots[0]
+                shot_event = db.query(GameEvent).filter(GameEvent.id == shot.event_id).first()
+                
+                # Calculate hypothetical xG if shot was taken from pass location
+                pass_xg = calculate_xg_from_location(
+                    pass_game_event.x_coordinate, 
+                    pass_game_event.y_coordinate
+                )
+                
+                # Actual xG of the shot
+                shot_xg = shot.xg or 0.0
+                
+                # Calculate delta (improvement due to pass)
+                xg_delta = max(0, shot_xg - pass_xg)
+                total_xg_delta += xg_delta
+        
+        return total_xg_delta
+
     def calculate_shot_metrics(self, player_id: Optional[int] = None, team_id: Optional[int] = None, game_id: Optional[int] = None) -> Dict[str, Any]:
         """
         Calculate shot-based metrics.

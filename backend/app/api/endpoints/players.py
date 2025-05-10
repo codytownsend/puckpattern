@@ -4,7 +4,11 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.schemas.player import Player, PlayerCreate, PlayerUpdate, PlayerWithTeam, PlayerWithStats, PlayerList
+from app.schemas.analytics import PlayerAnalytics
 from app.crud import players as crud_players
+from app.crud import entries as crud_entries
+from app.services.metrics_service import MetricsService
+from app.services.sequence_service import SequenceService
 
 router = APIRouter()
 
@@ -116,3 +120,55 @@ def get_player_stats(
     if "error" in stats:
         raise HTTPException(status_code=404, detail=stats["error"])
     return stats
+
+@router.get("/{player_id}/analytics", response_model=PlayerAnalytics)
+def get_player_analytics(
+    player_id: int,
+    game_id: Optional[int] = None,
+    season: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Get comprehensive analytics for a player
+    """
+    metrics_service = MetricsService(db)
+    sequence_service = SequenceService(db)
+    
+    # Get player
+    player = crud_players.get_player_by_player_id(db, player_id=player_id)
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+    
+    # Calculate metrics
+    ecr = metrics_service.calculate_ecr(player_id=player.id, game_id=game_id)
+    pri = metrics_service.calculate_pri(player_id=player.id, game_id=game_id)
+    pdi = metrics_service.calculate_pdi(player_id=player.id, game_id=game_id)
+    xg_delta_psm = metrics_service.calculate_xg_delta_psm(player_id=player.id, game_id=game_id)
+    
+    # Get shot metrics
+    shot_metrics = metrics_service.calculate_shot_metrics(player_id=player.id, game_id=game_id)
+    
+    # Get zone entries
+    entries = crud_entries.get_player_entries_stats(db, player_id=player_id)
+    
+    # Calculate ICE+ score
+    ice_plus = (ecr * 1.5) + (pri * 1.2) + (pdi * 1.0) + (xg_delta_psm * 2.0)
+    
+    return {
+        "player_id": player_id,
+        "name": player.name,
+        "team": {
+            "id": player.team.id,
+            "team_id": player.team.team_id,
+            "name": player.team.name,
+            "abbreviation": player.team.abbreviation
+        } if player.team else None,
+        "position": player.position,
+        "ecr": ecr,
+        "pri": pri,
+        "pdi": pdi,
+        "xg_delta_psm": xg_delta_psm,
+        "shot_metrics": shot_metrics,
+        "entries": entries,
+        "ice_plus": ice_plus
+    }
