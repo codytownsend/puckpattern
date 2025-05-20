@@ -11,7 +11,7 @@ app = FastAPI(
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust this in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -21,8 +21,9 @@ app.add_middleware(
 async def root():
     return {"message": "Welcome to PuckPattern API"}
 
+# This is the important line - make sure it's there and correct
+app.include_router(api_router, prefix="/api")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-app.include_router(api_router, prefix="/api")

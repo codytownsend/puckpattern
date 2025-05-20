@@ -51,11 +51,16 @@ class MetricsService:
         # Apply filters
         if player_id:
             query = query.filter(PuckRecovery.player_id == player_id)
-        if team_id:
-            query = query.join(GameEvent).filter(GameEvent.team_id == team_id)
-        if game_id:
-            query = query.join(GameEvent).filter(GameEvent.game_id == game_id)
+        
+        if team_id or game_id:
+            # Explicitly specify the join condition to avoid ambiguity
+            query = query.join(GameEvent, PuckRecovery.event_id == GameEvent.id)
             
+            if team_id:
+                query = query.filter(GameEvent.team_id == team_id)
+            if game_id:
+                query = query.filter(GameEvent.game_id == game_id)
+                
         recoveries = query.all()
         
         pri_score = 0
@@ -86,15 +91,20 @@ class MetricsService:
         Calculate xGΔPSM: The increase in expected goals due to passes
         """
         # Query passes that led to shots
-        query = self.db.query(Pass).join(GameEvent, Pass.event_id == GameEvent.id).filter(Pass.completed == True)
+        query = self.db.query(Pass)
         
         # Apply filters
         if player_id:
             query = query.filter(Pass.passer_id == player_id)
-        if team_id:
-            query = query.filter(GameEvent.team_id == team_id)
-        if game_id:
-            query = query.filter(GameEvent.game_id == game_id)
+        
+        if team_id or game_id:
+            # Explicitly specify the join condition
+            query = query.join(GameEvent, Pass.event_id == GameEvent.id)
+            
+            if team_id:
+                query = query.filter(GameEvent.team_id == team_id)
+            if game_id:
+                query = query.filter(GameEvent.game_id == game_id)
         
         passes = query.all()
         
@@ -165,7 +175,6 @@ class MetricsService:
         
         return min(0.95, xg)  # Cap at 0.95
 
-    # Add this method after the calculate_pri method:
     def calculate_pdi(self, player_id=None, team_id=None, game_id=None):
         """
         Calculate Positional Disruption Index:
@@ -328,29 +337,34 @@ class MetricsService:
         Returns:
             Dictionary of team metrics
         """
-        # Get team
-        team = self.db.query(Team).filter(Team.team_id == team_id).first()
-        if not team:
-            return {"error": "Team not found"}
-        
-        # Calculate metrics
-        ecr = self.calculate_ecr(team_id=team.id)
-        pri = self.calculate_pri(team_id=team.id)
-        shot_metrics = self.calculate_shot_metrics(team_id=team.id)
-        
-        # Get players on team
-        players = self.db.query(Player).filter(Player.team_id == team.id).all()
-        
-        # Get basic team stats
-        total_events = self.db.query(GameEvent).filter(GameEvent.team_id == team.id).count()
-        
-        return {
-            "team_id": team_id,
-            "name": team.name,
-            "abbreviation": team.abbreviation,
-            "ecr": ecr,
-            "pri": pri,
-            "shot_metrics": shot_metrics,
-            "total_events": total_events,
-            "player_count": len(players)
-        }
+        try:
+            # Get team - Convert team_id to string before comparing
+            team = self.db.query(Team).filter(Team.team_id == str(team_id)).first()
+            if not team:
+                return {"error": f"Team with ID {team_id} not found"}
+            
+            # Calculate metrics
+            ecr = self.calculate_ecr(team_id=team.id)
+            pri = self.calculate_pri(team_id=team.id)
+            shot_metrics = self.calculate_shot_metrics(team_id=team.id)
+            
+            # Get players on team
+            players = self.db.query(Player).filter(Player.team_id == team.id).all()
+            
+            # Get basic team stats
+            total_events = self.db.query(GameEvent).filter(GameEvent.team_id == team.id).count()
+            
+            return {
+                "team_id": team_id,
+                "name": team.name,
+                "abbreviation": team.abbreviation,
+                "ecr": ecr,
+                "pri": pri,
+                "shot_metrics": shot_metrics,
+                "total_events": total_events,
+                "player_count": len(players)
+            }
+        except Exception as e:
+            # Log the error and return an error response
+            print(f"Error calculating team metrics: {e}")
+            return {"error": f"Error calculating metrics: {str(e)}"}

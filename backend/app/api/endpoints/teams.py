@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.schemas.team import Team, TeamCreate, TeamUpdate, TeamWithStats, TeamList
+from app.schemas.analytics import TeamAnalytics
 from app.crud import teams as crud_teams
 from app.services.metrics_service import MetricsService
 from app.services.sequence_service import SequenceService
