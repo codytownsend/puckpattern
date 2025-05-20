@@ -13,10 +13,12 @@ class SequenceService:
     def __init__(self, db: Session):
         self.db = db
     
-    def detect_cycles(db, game_id, team_id):
+    def detect_cycles(self, game_id, team_id):
         """
         Detect offensive zone cycling patterns
         """
+        db = self.db
+        
         # Get consecutive passes in offensive zone
         passes = db.query(Pass).join(GameEvent).filter(
             GameEvent.game_id == game_id,

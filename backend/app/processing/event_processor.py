@@ -2,6 +2,7 @@
 Process raw game events into specialized analytics tables.
 """
 import logging
+import math
 from typing import Dict, List, Any, Optional
 from sqlalchemy.orm import Session
 
@@ -25,10 +26,15 @@ class EventProcessor:
         
         Args:
             game_id: Game ID to process
-            
+                
         Returns:
             Stats about processed events
         """
+        # Get the game
+        game = self.db.query(Game).filter(Game.game_id == game_id).first()
+        if not game:
+            return {"error": f"Game {game_id} not found"}
+        
         # Get all events for this game, ordered by time
         events = self.db.query(GameEvent).filter(
             GameEvent.game_id == game_id
@@ -43,7 +49,8 @@ class EventProcessor:
             "shots_processed": 0,
             "entries_processed": 0,
             "passes_processed": 0,
-            "recoveries_processed": 0
+            "recoveries_processed": 0,
+            "other_processed": 0
         }
         
         # Process each event
@@ -52,29 +59,124 @@ class EventProcessor:
             if self._is_processed(event):
                 continue
                 
-            # Process based on event type
-            if event.event_type in ["shot", "shot-on-goal", "goal", "missed-shot", "blocked-shot"]:
+            # Process based on exact event types we found
+            event_type = event.event_type.lower() if event.event_type else ""
+            
+            # Shot-related events
+            if event_type in ["shot-on-goal", "blocked-shot", "missed-shot", "goal", "failed-shot-attempt"]:
                 self._process_shot(event)
                 stats["shots_processed"] += 1
-                
-            elif "entry" in event.event_type.lower() or self._is_zone_entry(event):
-                self._process_zone_entry(event)
-                stats["entries_processed"] += 1
-                
-            elif "pass" in event.event_type.lower():
-                self._process_pass(event)
-                stats["passes_processed"] += 1
-                
-            elif event.event_type in ["takeaway", "recovery"]:
+            
+            # Recovery events    
+            elif event_type in ["giveaway", "takeaway"]:
                 self._process_recovery(event)
                 stats["recoveries_processed"] += 1
+            
+            # Zone entries need to be inferred (not in explicit events)
+            elif self._is_zone_entry(event):
+                self._process_zone_entry(event)
+                stats["entries_processed"] += 1
+            
+            # Passes need to be inferred (not in explicit events)
+            elif self._is_pass(event):
+                self._process_pass(event)
+                stats["passes_processed"] += 1
+            
+            # Other events that might be useful for context
+            elif event_type in ["faceoff", "hit", "penalty", "delayed-penalty"]:
+                # Process other events that provide context
+                if event_type == "faceoff":
+                    self._process_faceoff(event)
+                elif event_type == "hit":
+                    self._process_hit(event)
+                elif event_type in ["penalty", "delayed-penalty"]:
+                    self._process_penalty(event)
+                
+                stats["other_processed"] += 1
         
-        # After processing all events, create derived data
+        # After processing all events, calculate derived data
         self._calculate_player_stats(game_id)
         self._calculate_team_stats(game_id)
         
+        # Commit all changes
+        self.db.commit()
+        
         return stats
     
+    def _is_pass(self, event: GameEvent) -> bool:
+        """
+        Infer if an event is a pass based on context.
+        Since we don't have explicit pass events, we need to infer them.
+        
+        Args:
+            event: The game event
+            
+        Returns:
+            True if likely a pass, False otherwise
+        """
+        # This is a placeholder - in a real implementation, you'd look at:
+        # 1. Consecutive possession events by different players on same team
+        # 2. Event descriptions that might mention passes
+        # 3. Player position changes that suggest passes
+        
+        # For now, we'll return False to avoid creating inaccurate pass data
+        return False
+    
+    def _process_shot(self, event: GameEvent) -> Optional[ShotEvent]:
+        """
+        Process shot events (shot-on-goal, blocked-shot, missed-shot, goal)
+        
+        Args:
+            event: The shot event
+            
+        Returns:
+            Created shot event or None
+        """
+        # Skip if already processed
+        existing = self.db.query(ShotEvent).filter(ShotEvent.event_id == event.id).first()
+        if existing:
+            return existing
+        
+        # Determine if it's a goal
+        is_goal = (event.event_type.lower() == "goal")
+        
+        # Get shot type from event type
+        shot_type = event.event_type.lower().replace("-", "_")
+        
+        # Calculate distance and angle if coordinates available
+        distance = None
+        angle = None
+        if event.x_coordinate is not None and event.y_coordinate is not None:
+            # NHL coordinates: center ice is 0,0, goal lines at +/-89 feet
+            goal_x = 89  # This might need to be adjusted based on your data
+            goal_y = 0
+            
+            # Calculate distance in feet
+            distance = ((event.x_coordinate - goal_x) ** 2 + (event.y_coordinate - goal_y) ** 2) ** 0.5
+            
+            # Calculate angle (0 is straight on, 90 is from side)
+            if event.x_coordinate != goal_x:  # Avoid division by zero
+                angle = abs(math.degrees(math.atan((event.y_coordinate - goal_y) / (event.x_coordinate - goal_x))))
+            else:
+                angle = 90.0
+        
+        # Create shot event
+        shot_event = ShotEvent(
+            event_id=event.id,
+            shot_type=shot_type,
+            distance=distance,
+            angle=angle,
+            goal=is_goal,
+            shooter_id=event.player_id,
+            # Other fields would be set if available
+            xg=self._calculate_xg(distance, angle, shot_type)
+        )
+        
+        self.db.add(shot_event)
+        self.db.flush()  # Save but don't commit yet
+        
+        return shot_event
+
     def _is_processed(self, event: GameEvent) -> bool:
         """
         Check if an event has already been processed into specialized tables.

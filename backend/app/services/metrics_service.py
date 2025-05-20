@@ -1,4 +1,5 @@
 import logging
+import math
 from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_, or_, desc, asc
@@ -42,13 +43,10 @@ class MetricsService:
         
         return successful_entries / total_entries if total_entries > 0 else 0
     
-    def calculate_pri(db, player_id=None, team_id=None, game_id=None):
-        """
-        Calculate Puck Recovery Impact:
-        Weighted sum of recoveries based on zone, outcome, and type
-        """
+    def calculate_pri(self, player_id=None, team_id=None, game_id=None):
+        """Calculate Puck Recovery Impact"""
         # Query recoveries
-        query = db.query(PuckRecovery)
+        query = self.db.query(PuckRecovery)
         
         # Apply filters
         if player_id:
@@ -83,12 +81,12 @@ class MetricsService:
             
         return pri_score
     
-    def calculate_xg_delta_psm(db, player_id=None, team_id=None, game_id=None):
+    def calculate_xg_delta_psm(self, player_id=None, team_id=None, game_id=None):
         """
         Calculate xGΔPSM: The increase in expected goals due to passes
         """
         # Query passes that led to shots
-        query = db.query(Pass).join(GameEvent).filter(Pass.completed == True)
+        query = self.db.query(Pass).join(GameEvent, Pass.event_id == GameEvent.id).filter(Pass.completed == True)
         
         # Apply filters
         if player_id:
@@ -104,9 +102,9 @@ class MetricsService:
         
         for pass_event in passes:
             # Find shot that followed this pass within 3 seconds
-            pass_game_event = db.query(GameEvent).filter(GameEvent.id == pass_event.event_id).first()
+            pass_game_event = self.db.query(GameEvent).filter(GameEvent.id == pass_event.event_id).first()
             
-            shots = db.query(ShotEvent).join(GameEvent).filter(
+            shots = self.db.query(ShotEvent).join(GameEvent, ShotEvent.event_id == GameEvent.id).filter(
                 GameEvent.game_id == pass_game_event.game_id,
                 GameEvent.period == pass_game_event.period,
                 GameEvent.time_elapsed > pass_game_event.time_elapsed,
@@ -116,10 +114,10 @@ class MetricsService:
             if shots:
                 # Found a shot after the pass
                 shot = shots[0]
-                shot_event = db.query(GameEvent).filter(GameEvent.id == shot.event_id).first()
+                shot_event = self.db.query(GameEvent).filter(GameEvent.id == shot.event_id).first()
                 
                 # Calculate hypothetical xG if shot was taken from pass location
-                pass_xg = calculate_xg_from_location(
+                pass_xg = self._calculate_xg_from_location(
                     pass_game_event.x_coordinate, 
                     pass_game_event.y_coordinate
                 )
@@ -132,6 +130,80 @@ class MetricsService:
                 total_xg_delta += xg_delta
         
         return total_xg_delta
+
+    def _calculate_xg_from_location(self, x_coordinate, y_coordinate):
+        """
+        Calculate expected goals from a specific location.
+        
+        Args:
+            x_coordinate: X coordinate on ice
+            y_coordinate: Y coordinate on ice
+            
+        Returns:
+            Expected goals value (float)
+        """
+        if x_coordinate is None or y_coordinate is None:
+            return 0.05  # Default value if coordinates are missing
+        
+        # Calculate distance to goal (assuming NHL coordinates)
+        goal_x = 89.0  # X-coordinate of goal line
+        goal_y = 0.0   # Y-coordinate of center of goal
+        
+        distance = ((x_coordinate - goal_x) ** 2 + (y_coordinate - goal_y) ** 2) ** 0.5
+        
+        # Calculate angle (0 is straight on, 90 is from side)
+        angle = 0.0
+        if x_coordinate != goal_x:  # Avoid division by zero
+            angle = abs(math.degrees(math.atan((y_coordinate - goal_y) / (x_coordinate - goal_x))))
+        else:
+            angle = 90.0
+        
+        # Simple xG model based on distance and angle
+        base_xg = max(0.01, 1.0 - (distance / 100.0))
+        angle_factor = angle / 90.0  # Normalize angle to 0-1
+        xg = base_xg * (1.0 - (angle_factor * 0.7))
+        
+        return min(0.95, xg)  # Cap at 0.95
+
+    # Add this method after the calculate_pri method:
+    def calculate_pdi(self, player_id=None, team_id=None, game_id=None):
+        """
+        Calculate Positional Disruption Index:
+        Weighted sum of broken pass chains, entry denials, cycle cuts
+        """
+        pdi_score = 0.0
+        
+        # 1. Count intercepted passes
+        pass_query = self.db.query(Pass).filter(Pass.intercepted == True)
+        
+        # Apply filters
+        if player_id:
+            pass_query = pass_query.filter(Pass.intercepted_by_id == player_id)
+        if team_id or game_id:
+            pass_query = pass_query.join(GameEvent, Pass.event_id == GameEvent.id)
+            if team_id:
+                pass_query = pass_query.filter(GameEvent.team_id == team_id)
+            if game_id:
+                pass_query = pass_query.filter(GameEvent.game_id == game_id)
+        
+        intercepted_passes = pass_query.count()
+        pdi_score += intercepted_passes * 1.5  # Weight for pass interceptions
+        
+        # 2. Count takeaways (active turnovers caused)
+        takeaway_query = self.db.query(PuckRecovery).filter(PuckRecovery.recovery_type == "takeaway")
+        if player_id:
+            takeaway_query = takeaway_query.filter(PuckRecovery.player_id == player_id)
+        if team_id or game_id:
+            takeaway_query = takeaway_query.join(GameEvent, PuckRecovery.event_id == GameEvent.id)
+            if team_id:
+                takeaway_query = takeaway_query.filter(GameEvent.team_id == team_id)
+            if game_id:
+                takeaway_query = takeaway_query.filter(GameEvent.game_id == game_id)
+        
+        takeaways = takeaway_query.count()
+        pdi_score += takeaways * 1.8  # Weight for takeaways
+        
+        return pdi_score
 
     def calculate_shot_metrics(self, player_id: Optional[int] = None, team_id: Optional[int] = None, game_id: Optional[int] = None) -> Dict[str, Any]:
         """
