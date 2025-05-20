@@ -355,7 +355,7 @@ class MetricsService:
             total_events = self.db.query(GameEvent).filter(GameEvent.team_id == team.id).count()
             
             return {
-                "team_id": team_id,
+                "team_id": str(team_id),
                 "name": team.name,
                 "abbreviation": team.abbreviation,
                 "ecr": ecr,

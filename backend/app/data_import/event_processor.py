@@ -25,7 +25,7 @@ class EventProcessor:
         Args:
             game: Game object
             play_data: Play data from NHL API
-            
+                
         Returns:
             Created game event
         """
@@ -49,28 +49,71 @@ class EventProcessor:
         time_parts = time_in_period.split(":")
         time_elapsed = int(time_parts[0]) * 60 + int(time_parts[1])
         
-        # Get coordinates
-        x_coordinate = play_data.get("xCoord")
-        y_coordinate = play_data.get("yCoord")
+        # Get details object - this is where most of the important data is
+        details = play_data.get("details", {})
         
-        # Get team and player
+        # Get coordinates from details
+        x_coordinate = details.get("xCoord")
+        y_coordinate = details.get("yCoord")
+        
+        # Get team ID from eventOwnerTeamId in details
         team_id = None
+        if "eventOwnerTeamId" in details:
+            team_owner_id = details["eventOwnerTeamId"]
+            # Convert to string and lookup in database
+            team = self.db.query(Team).filter(Team.team_id == str(team_owner_id)).first()
+            if team:
+                team_id = team.id
+            else:
+                logger.warning(f"Team with ID {team_owner_id} not found in database")
+        
+        # Get player ID based on event type
         player_id = None
+        if event_type == "goal":
+            # For goals, use the scoring player
+            if "scoringPlayerId" in details:
+                player_nhl_id = details["scoringPlayerId"]
+                player = self.db.query(Player).filter(Player.player_id == str(player_nhl_id)).first()
+                if player:
+                    player_id = player.id
         
-        if "team" in play_data:
-            team_abbrev = play_data["team"].get("abbrev")
-            if team_abbrev:
-                team = self.db.query(Team).filter(Team.abbreviation == team_abbrev).first()
-                if team:
-                    team_id = team.id
+        elif event_type in ["shot", "shot-on-goal", "missed-shot"]:
+            # For shots, use the shooting player
+            if "shootingPlayerId" in details:
+                player_nhl_id = details["shootingPlayerId"]
+                player = self.db.query(Player).filter(Player.player_id == str(player_nhl_id)).first()
+                if player:
+                    player_id = player.id
         
-        # Get player from the first participant if available
-        participants = play_data.get("participants", [])
-        if participants and len(participants) > 0:
-            player_data = participants[0]
-            nhl_player_id = player_data.get("playerId")
-            if nhl_player_id:
-                player = self.db.query(Player).filter(Player.player_id == str(nhl_player_id)).first()
+        elif event_type == "blocked-shot":
+            # For blocked shots, use the blocking player
+            if "blockingPlayerId" in details:
+                player_nhl_id = details["blockingPlayerId"]
+                player = self.db.query(Player).filter(Player.player_id == str(player_nhl_id)).first()
+                if player:
+                    player_id = player.id
+        
+        elif event_type == "hit":
+            # For hits, use the hitting player
+            if "hittingPlayerId" in details:
+                player_nhl_id = details["hittingPlayerId"]
+                player = self.db.query(Player).filter(Player.player_id == str(player_nhl_id)).first()
+                if player:
+                    player_id = player.id
+        
+        elif event_type == "faceoff":
+            # For faceoffs, use the winning player
+            if "winningPlayerId" in details:
+                player_nhl_id = details["winningPlayerId"]
+                player = self.db.query(Player).filter(Player.player_id == str(player_nhl_id)).first()
+                if player:
+                    player_id = player.id
+        
+        elif event_type in ["giveaway", "takeaway"]:
+            # For giveaways and takeaways, use the player ID
+            if "playerId" in details:
+                player_nhl_id = details["playerId"]
+                player = self.db.query(Player).filter(Player.player_id == str(player_nhl_id)).first()
                 if player:
                     player_id = player.id
         
@@ -86,29 +129,33 @@ class EventProcessor:
             player_id=player_id,
             team_id=team_id,
             situation_code=play_data.get("situationCode"),
-            is_scoring_play=play_data.get("isScoringPlay", False),
-            is_penalty=play_data.get("isPenalty", False),
+            is_scoring_play=event_type == "goal",
+            is_penalty=event_type == "penalty",
             sort_order=play_data.get("sortOrder"),
             event_id=play_data.get("eventId")
         )
+        
+        # Log useful information about this event
+        logger.debug(f"Creating event type={event_type}, team_id={team_id}, player_id={player_id}, coords=({x_coordinate},{y_coordinate})")
+        
         self.db.add(game_event)
         self.db.commit()
         self.db.refresh(game_event)
         
-        # Process specific event types
-        if event_type == "GOAL" or event_type == "SHOT" or event_type == "SHOT-ON-GOAL" or event_type == "MISSED-SHOT" or event_type == "BLOCKED-SHOT":
+        # Process specific event types for specialized tables
+        if event_type in ["goal", "shot", "shot-on-goal", "missed-shot", "blocked-shot"]:
             self._process_shot_event(game_event, play_data)
-        elif event_type == "FACEOFF":
+        elif event_type == "faceoff":
             self._process_faceoff(game_event, play_data)
-        elif event_type == "HIT":
+        elif event_type == "hit":
             self._process_hit(game_event, play_data)
-        elif event_type == "PENALTY":
+        elif event_type == "penalty":
             self._process_penalty(game_event, play_data)
-        elif event_type == "TAKEAWAY" or event_type == "GIVEAWAY":
+        elif event_type in ["takeaway", "giveaway"]:
             self._process_turnover(game_event, play_data)
-        elif event_type == "ZONE-ENTRY":
+        elif event_type == "zone-entry":
             self._detect_zone_entry(game_event, play_data)
-        elif event_type == "PASS":
+        elif event_type == "pass":
             self._process_pass(game_event, play_data)
         
         return game_event
