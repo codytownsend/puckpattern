@@ -258,8 +258,7 @@ def get_game_stats(db: Session, game_id: int) -> Dict[str, Any]:
     """
     Get detailed statistics for a game.
     """
-    # Instead of using get_game_by_game_id which now returns a dict,
-    # query the database directly
+    # Query the database directly for the game
     game = db.query(Game).options(
         joinedload(Game.home_team),
         joinedload(Game.away_team)
@@ -316,54 +315,78 @@ def get_game_stats(db: Session, game_id: int) -> Dict[str, Any]:
         } if game.away_team else None
     }
     
-    # Add team stats if available
+    # Add team stats if available 
     if home_team_stats:
+        # Calculate derived percentages safely to avoid division by zero
+        faceoff_total = (home_team_stats.faceoff_wins or 0) + (home_team_stats.faceoff_losses or 0)
+        faceoff_pct = (home_team_stats.faceoff_wins or 0) / faceoff_total * 100 if faceoff_total > 0 else 0
+        
+        pp_pct = 0
+        if home_team_stats.pp_opportunities and home_team_stats.pp_opportunities > 0:
+            pp_pct = (home_team_stats.pp_goals or 0) / home_team_stats.pp_opportunities * 100
+            
+        pk_pct = 0
+        if home_team_stats.pk_times_shorthanded and home_team_stats.pk_times_shorthanded > 0:
+            pk_pct = ((home_team_stats.pk_times_shorthanded or 0) - (home_team_stats.pk_goals_against or 0)) / home_team_stats.pk_times_shorthanded * 100
+        
         game_info["home_team_stats"] = {
-            "shots": home_team_stats.shots,
-            "hits": home_team_stats.hits,
-            "blocks": home_team_stats.blocks,
-            "pim": home_team_stats.pim,
-            "faceoff_wins": home_team_stats.faceoff_wins,
-            "faceoff_losses": home_team_stats.faceoff_losses,
-            "faceoff_pct": home_team_stats.faceoff_wins / (home_team_stats.faceoff_wins + home_team_stats.faceoff_losses) * 100 if (home_team_stats.faceoff_wins + home_team_stats.faceoff_losses) > 0 else 0,
-            "xg": home_team_stats.xg,
-            "xg_against": home_team_stats.xg_against,
-            "corsi_for": home_team_stats.corsi_for,
-            "corsi_against": home_team_stats.corsi_against,
-            "pp_opportunities": home_team_stats.pp_opportunities,
-            "pp_goals": home_team_stats.pp_goals,
-            "pp_pct": home_team_stats.pp_goals / home_team_stats.pp_opportunities * 100 if home_team_stats.pp_opportunities > 0 else 0,
-            "pk_times_shorthanded": home_team_stats.pk_times_shorthanded,
-            "pk_goals_against": home_team_stats.pk_goals_against,
-            "pk_pct": (home_team_stats.pk_times_shorthanded - home_team_stats.pk_goals_against) / home_team_stats.pk_times_shorthanded * 100 if home_team_stats.pk_times_shorthanded > 0 else 0,
+            "shots": home_team_stats.shots or 0,
+            "hits": home_team_stats.hits or 0,
+            "blocks": home_team_stats.blocks or 0,
+            "pim": home_team_stats.pim or 0,
+            "faceoff_wins": home_team_stats.faceoff_wins or 0,
+            "faceoff_losses": home_team_stats.faceoff_losses or 0,
+            "faceoff_pct": faceoff_pct,
+            "xg": home_team_stats.xg or 0.0,
+            "xg_against": home_team_stats.xg_against or 0.0,
+            "corsi_for": home_team_stats.corsi_for or 0,
+            "corsi_against": home_team_stats.corsi_against or 0,
+            "pp_opportunities": home_team_stats.pp_opportunities or 0,
+            "pp_goals": home_team_stats.pp_goals or 0,
+            "pp_pct": pp_pct,
+            "pk_times_shorthanded": home_team_stats.pk_times_shorthanded or 0,
+            "pk_goals_against": home_team_stats.pk_goals_against or 0,
+            "pk_pct": pk_pct
         }
     else:
         game_info["home_team_stats"] = None
     
     if away_team_stats:
+        # Calculate derived percentages safely to avoid division by zero
+        faceoff_total = (away_team_stats.faceoff_wins or 0) + (away_team_stats.faceoff_losses or 0)
+        faceoff_pct = (away_team_stats.faceoff_wins or 0) / faceoff_total * 100 if faceoff_total > 0 else 0
+        
+        pp_pct = 0
+        if away_team_stats.pp_opportunities and away_team_stats.pp_opportunities > 0:
+            pp_pct = (away_team_stats.pp_goals or 0) / away_team_stats.pp_opportunities * 100
+            
+        pk_pct = 0
+        if away_team_stats.pk_times_shorthanded and away_team_stats.pk_times_shorthanded > 0:
+            pk_pct = ((away_team_stats.pk_times_shorthanded or 0) - (away_team_stats.pk_goals_against or 0)) / away_team_stats.pk_times_shorthanded * 100
+        
         game_info["away_team_stats"] = {
-            "shots": away_team_stats.shots,
-            "hits": away_team_stats.hits,
-            "blocks": away_team_stats.blocks,
-            "pim": away_team_stats.pim,
-            "faceoff_wins": away_team_stats.faceoff_wins,
-            "faceoff_losses": away_team_stats.faceoff_losses,
-            "faceoff_pct": away_team_stats.faceoff_wins / (away_team_stats.faceoff_wins + away_team_stats.faceoff_losses) * 100 if (away_team_stats.faceoff_wins + away_team_stats.faceoff_losses) > 0 else 0,
-            "xg": away_team_stats.xg,
-            "xg_against": away_team_stats.xg_against,
-            "corsi_for": away_team_stats.corsi_for,
-            "corsi_against": away_team_stats.corsi_against,
-            "pp_opportunities": away_team_stats.pp_opportunities,
-            "pp_goals": away_team_stats.pp_goals,
-            "pp_pct": away_team_stats.pp_goals / away_team_stats.pp_opportunities * 100 if away_team_stats.pp_opportunities > 0 else 0,
-            "pk_times_shorthanded": away_team_stats.pk_times_shorthanded,
-            "pk_goals_against": away_team_stats.pk_goals_against,
-            "pk_pct": (away_team_stats.pk_times_shorthanded - away_team_stats.pk_goals_against) / away_team_stats.pk_times_shorthanded * 100 if away_team_stats.pk_times_shorthanded > 0 else 0,
+            "shots": away_team_stats.shots or 0,
+            "hits": away_team_stats.hits or 0,
+            "blocks": away_team_stats.blocks or 0,
+            "pim": away_team_stats.pim or 0,
+            "faceoff_wins": away_team_stats.faceoff_wins or 0,
+            "faceoff_losses": away_team_stats.faceoff_losses or 0,
+            "faceoff_pct": faceoff_pct,
+            "xg": away_team_stats.xg or 0.0,
+            "xg_against": away_team_stats.xg_against or 0.0,
+            "corsi_for": away_team_stats.corsi_for or 0,
+            "corsi_against": away_team_stats.corsi_against or 0,
+            "pp_opportunities": away_team_stats.pp_opportunities or 0,
+            "pp_goals": away_team_stats.pp_goals or 0,
+            "pp_pct": pp_pct,
+            "pk_times_shorthanded": away_team_stats.pk_times_shorthanded or 0,
+            "pk_goals_against": away_team_stats.pk_goals_against or 0,
+            "pk_pct": pk_pct
         }
     else:
         game_info["away_team_stats"] = None
     
-    # Get goals for this game
+    # Get goals for this game to build scoring summary
     goals = db.query(ShotEvent).join(
         GameEvent, ShotEvent.event_id == GameEvent.id
     ).filter(

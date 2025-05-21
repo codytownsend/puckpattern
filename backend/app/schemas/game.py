@@ -66,16 +66,7 @@ class GameWithStats(GameWithTeams):
     """Game schema with additional statistics."""
     home_team_stats: Optional[Dict[str, Any]] = None
     away_team_stats: Optional[Dict[str, Any]] = None
-    home_team_sog: Optional[int] = None
-    away_team_sog: Optional[int] = None
-    home_team_faceoff_pct: Optional[float] = None
-    away_team_faceoff_pct: Optional[float] = None
-    home_team_hits: Optional[int] = None
-    away_team_hits: Optional[int] = None
-    home_team_blocks: Optional[int] = None
-    away_team_blocks: Optional[int] = None
-    home_team_power_play: Optional[Dict[str, Any]] = None
-    away_team_power_play: Optional[Dict[str, Any]] = None
+    scoring_summary: Optional[List[Dict[str, Any]]] = None
     
     model_config = ConfigDict(from_attributes=True)
 
