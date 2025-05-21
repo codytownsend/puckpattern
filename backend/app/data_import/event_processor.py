@@ -381,7 +381,7 @@ class EventProcessor:
         
         # Calculate percentage
         if stats.faceoffs_taken > 0:
-            stats.faceoff_pct = (stats.faceoffs_won / stats.faceoffs_taken) * 100
+            stats.faceoff_pct = ((stats.faceoffs_won or 0) / stats.faceoffs_taken) * 100
         
         self.db.commit()
     

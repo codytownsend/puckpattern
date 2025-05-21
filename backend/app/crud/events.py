@@ -18,7 +18,7 @@ def get_events(
     period: Optional[int] = None,
     sort_by: str = "time_elapsed",
     sort_desc: bool = False
-) -> List[GameEvent]:
+) -> List[Dict[str, Any]]:  # Changed return type to List of dictionaries
     """
     Get game events with various filters.
     """
@@ -61,9 +61,44 @@ def get_events(
             query = query.order_by(asc(GameEvent.period), asc(GameEvent.time_elapsed))
     # Add other sorting options as needed
     
-    if limit:
-        return query.offset(skip).limit(limit).all()
-    return query.offset(skip).all()
+    # Execute the query with pagination
+    events = query.offset(skip).limit(limit).all() if limit else query.offset(skip).all()
+    
+    # Convert SQLAlchemy models to dictionaries
+    result = []
+    for event in events:
+        event_dict = {
+            "id": event.id,
+            "game_id": event.game_id,
+            "event_type": event.event_type,
+            "period": event.period,
+            "time_elapsed": event.time_elapsed,
+            "time_remaining": event.time_remaining,
+            "x_coordinate": event.x_coordinate,
+            "y_coordinate": event.y_coordinate,
+            "situation_code": event.situation_code,
+            "strength_code": event.strength_code,
+            "is_scoring_play": event.is_scoring_play,
+            "is_penalty": event.is_penalty,
+            "sort_order": event.sort_order,
+            "event_id": event.event_id,
+            "created_at": event.created_at,
+            "player": {
+                "id": event.player.id,
+                "player_id": event.player.player_id,
+                "name": event.player.name,
+                "position": event.player.position
+            } if event.player else None,
+            "team": {
+                "id": event.team.id, 
+                "team_id": event.team.team_id,
+                "name": event.team.name,
+                "abbreviation": event.team.abbreviation
+            } if event.team else None
+        }
+        result.append(event_dict)
+    
+    return result
 
 
 def get_event_by_id(db: Session, event_id: int) -> Optional[GameEvent]:
