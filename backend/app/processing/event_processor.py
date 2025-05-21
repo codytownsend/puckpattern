@@ -187,23 +187,26 @@ class EventProcessor:
         Returns:
             True if already processed, False otherwise
         """
-        # Check for shot events
-        if event.event_type in ["shot", "shot-on-goal", "goal", "missed-shot", "blocked-shot"]:
+        # Normalize event type to lowercase
+        event_type = event.event_type.lower() if event.event_type else ""
+        
+        # Check for shot events - use the same list as process_game
+        if event_type in ["shot-on-goal", "blocked-shot", "missed-shot", "goal", "failed-shot-attempt"]:
             shot = self.db.query(ShotEvent).filter(ShotEvent.event_id == event.id).first()
             return shot is not None
             
-        # Check for zone entries
-        elif "entry" in event.event_type.lower():
+        # Check for zone entries - normalize lowercase check
+        elif "entry" in event_type:
             entry = self.db.query(ZoneEntry).filter(ZoneEntry.event_id == event.id).first()
             return entry is not None
             
-        # Check for passes
-        elif "pass" in event.event_type.lower():
+        # Check for passes - already using lowercase check
+        elif "pass" in event_type:
             pass_event = self.db.query(Pass).filter(Pass.event_id == event.id).first()
             return pass_event is not None
             
-        # Check for recoveries
-        elif event.event_type in ["takeaway", "recovery"]:
+        # Check for recoveries - use consistent list with process_game
+        elif event_type in ["giveaway", "takeaway"]:
             recovery = self.db.query(PuckRecovery).filter(PuckRecovery.event_id == event.id).first()
             return recovery is not None
             

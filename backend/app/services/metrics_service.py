@@ -272,15 +272,9 @@ class MetricsService:
     def calculate_player_metrics(self, player_id: int) -> Dict[str, Any]:
         """
         Calculate all metrics for a player.
-        
-        Args:
-            player_id: Player ID
-            
-        Returns:
-            Dictionary of player metrics
         """
-        # Get player
-        player = self.db.query(Player).filter(Player.player_id == player_id).first()
+        # Get player - Add str() conversion to fix type issue
+        player = self.db.query(Player).filter(Player.player_id == str(player_id)).first()
         if not player:
             return {"error": "Player not found"}
         
