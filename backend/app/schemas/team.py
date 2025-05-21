@@ -57,8 +57,9 @@ class TeamWithStats(Team):
     points: int = 0
     goals_for: int = 0
     goals_against: int = 0
+    created_at: Optional[datetime] = None
     
-    # Advanced stats can be added here
+    # Advanced stats
     xg_for: Optional[float] = None
     xg_against: Optional[float] = None
     system_metrics: Optional[Dict[str, Any]] = None

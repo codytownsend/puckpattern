@@ -2,7 +2,7 @@ from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_
 
-from app.models.base import Team
+from app.models.base import Player, Team
 from app.schemas.team import TeamCreate, TeamUpdate
 
 
@@ -51,7 +51,7 @@ def get_team_by_team_id(db: Session, team_id: int) -> Optional[Team]:
     """
     Get a team by external team_id (e.g., NHL API ID).
     """
-    return db.query(Team).filter(Team.team_id == team_id).first()
+    return db.query(Team).filter(Team.team_id == str(team_id)).first()
 
 
 def get_team_by_abbreviation(db: Session, abbreviation: str) -> Optional[Team]:
@@ -123,7 +123,7 @@ def get_team_stats(db: Session, team_id: int) -> Dict[str, Any]:
         return {"error": "Team not found"}
     
     # Count number of players associated with the team
-    player_count = db.query(func.count()).filter_by(team_id=db_team.id).scalar()
+    player_count = db.query(func.count(Player.id)).filter(Player.team_id == db_team.id).scalar()
     
     # Get team games
     from app.models.analytics import Game

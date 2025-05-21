@@ -116,7 +116,7 @@ def get_player_stats(
     """
     Get statistics for a specific player.
     """
-    stats = crud_players.get_player_stats(db, player_id=player_id)
+    stats = crud_players.get_player_stats(db, player_id=str(player_id))
     if "error" in stats:
         raise HTTPException(status_code=404, detail=stats["error"])
     return stats

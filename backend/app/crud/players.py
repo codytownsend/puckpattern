@@ -45,7 +45,7 @@ def get_player_by_player_id(db: Session, player_id: int) -> Optional[Player]:
     """
     Get a player by external player_id (e.g., NHL API ID).
     """
-    return db.query(Player).filter(Player.player_id == player_id).first()
+    return db.query(Player).filter(Player.player_id == str(player_id)).first()
 
 
 def create_player(db: Session, player: PlayerCreate) -> Player:
@@ -130,7 +130,7 @@ def get_player_stats(db: Session, player_id: int, season: Optional[str] = None) 
     """
     Get statistics for a player.
     """
-    db_player = get_player_by_player_id(db, player_id)
+    db_player = db.query(Player).filter(Player.player_id == player_id).first()
     if not db_player:
         return {"error": "Player not found"}
     

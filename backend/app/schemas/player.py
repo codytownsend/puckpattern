@@ -72,6 +72,8 @@ class PlayerWithStats(PlayerWithTeam):
     points: int = 0
     shots: int = 0
     shot_percentage: float = 0.0
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     
     # Advanced stats
     xg: Optional[float] = None
