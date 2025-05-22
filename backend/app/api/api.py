@@ -1,21 +1,28 @@
 from fastapi import APIRouter
-from app.api.endpoints import teams, players, games, shots, entries, metrics, event, sequences, profiles, powerplay, system
+from app.api.endpoints import simple_stats
 
 api_router = APIRouter()
 
-# Core data endpoints
-api_router.include_router(teams.router, prefix="/teams", tags=["teams"])
-api_router.include_router(players.router, prefix="/players", tags=["players"])
-api_router.include_router(games.router, prefix="/games", tags=["games"])
+# Include our new simple stats endpoints
+api_router.include_router(simple_stats.router, prefix="/stats", tags=["stats"])
 
-# Event data endpoints
-api_router.include_router(shots.router, prefix="/shots", tags=["shots"])
-api_router.include_router(entries.router, prefix="/entries", tags=["zone entries"])
-api_router.include_router(event.router, prefix="/events", tags=["events"])
+# Health check endpoint
+@api_router.get("/health")
+async def health_check():
+    return {"status": "healthy", "message": "PuckPattern API is running"}
 
-# Analytics endpoints
-api_router.include_router(metrics.router, prefix="/metrics", tags=["metrics"])
-api_router.include_router(sequences.router, prefix="/sequences", tags=["sequences"])
-api_router.include_router(profiles.router, prefix="/profiles", tags=["profiles"])
-api_router.include_router(powerplay.router, prefix="/powerplay", tags=["power play"])
-api_router.include_router(system.router, prefix="/system", tags=["system"])
+@api_router.get("/")
+async def root():
+    return {
+        "message": "Welcome to PuckPattern API v2",
+        "description": "Simplified hockey analytics focused on NHL API data",
+        "endpoints": {
+            "/stats/seasons": "Get available seasons",
+            "/stats/teams": "Get all teams",
+            "/stats/players": "Get players (with search)",
+            "/stats/teams/{team_id}/stats": "Get team statistics",
+            "/stats/teams/{team_id}/roster": "Get team roster",
+            "/stats/players/{player_id}/stats": "Get player statistics",
+            "/stats/summary": "Database summary"
+        }
+    }

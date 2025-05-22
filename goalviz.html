@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Hockey Goal Visualizer</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #F9F5EF;
+            color: #1A1A24;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #2E2E38;
+            margin-bottom: 10px;
+        }
+
+        .visualization-container {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .rink-container {
+            width: 100%;
+            height: 500px;
+            border: 2px solid #2E2E38;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            position: relative;
+            background: linear-gradient(135deg, #f8f9ff 0%, #e8f0ff 100%);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #97DFFC 0%, #7ABFE3 100%);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .timeline-container {
+            margin-bottom: 15px;
+        }
+
+        .timeline {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .timeline::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #97DFFC;
+            cursor: pointer;
+            border: 2px solid #2E2E38;
+        }
+
+        .timeline::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #97DFFC;
+            cursor: pointer;
+            border: 2px solid #2E2E38;
+        }
+
+        .info-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            font-size: 14px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #2E2E38;
+        }
+
+        .info-value {
+            color: #4F4F5C;
+            font-family: monospace;
+        }
+
+        .data-input {
+            width: 100%;
+            height: 120px;
+            margin-bottom: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 10px;
+            resize: vertical;
+        }
+
+        .file-input-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .goal-indicator {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #FF5A5F 0%, #E63946 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 18px;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(255, 90, 95, 0.4);
+        }
+
+        .goal-indicator.show {
+            opacity: 1;
+            transform: translateX(-50%) scale(1.1);
+        }
+
+        .player-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid #2E2E38;
+        }
+
+        .puck-trail {
+            opacity: 0.6;
+        }
+
+        .shot-line {
+            stroke: #FF5A5F;
+            stroke-width: 2;
+            stroke-dasharray: 5, 5;
+            opacity: 0.8;
+        }
+
+        @keyframes goal-flash {
+
+            0%,
+            100% {
+                background-color: rgba(255, 90, 95, 0.1);
+            }
+
+            50% {
+                background-color: rgba(255, 90, 95, 0.3);
+            }
+        }
+
+        .goal-flash {
+            animation: goal-flash 0.5s ease-in-out 3;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏒 Enhanced Hockey Goal Visualizer</h1>
+            <p>Advanced visualization of hockey goals with player tracking, puck physics, and detailed analytics</p>
+        </div>
+
+        <div class="visualization-container">
+            <h2>📁 Load Goal Data</h2>
+            <p>Upload your JSON goal tracking data or paste it directly:</p>
+
+            <textarea id="data-input" class="data-input" placeholder='Paste JSON goal data here... Expected format:
+[
+  {
+    "frame": 1,
+    "time": 0.033,
+    "onIce": {
+      "1": {"id": "1", "x": 1200, "y": 300},
+      "player1": {"id": "8475768", "x": 1100, "y": 250, "teamAbbrev": "CAR", "sweaterNumber": "17", "name": "Player Name"}
+    }
+  }
+]'></textarea>
+
+            <div class="file-input-container">
+                <input type="file" id="file-input" accept=".json">
+                <button id="load-btn">🚀 Load Data</button>
+                <button id="sample-btn">📋 Load Sample Data</button>
+            </div>
+        </div>
+
+        <div class="visualization-container">
+            <h2>🎯 Goal Replay Visualization</h2>
+
+            <div class="goal-indicator" id="goal-indicator">⚡ GOAL! ⚡</div>
+
+            <div class="rink-container">
+                <svg id="rink-svg" viewBox="0 0 200 85" preserveAspectRatio="xMidYMid meet" width="100%" height="100%">
+                    <!-- Rink elements will be added by JavaScript -->
+                </svg>
+                <div class="player-tooltip" id="player-tooltip"></div>
+            </div>
+
+            <div class="controls">
+                <button id="slow-btn" title="Slow Motion">🐌 0.5x</button>
+                <button id="restart-btn" title="Restart Replay">↺ Restart</button>
+                <button id="play-btn" title="Play/Pause">▶ Play</button>
+                <button id="fast-btn" title="Fast Forward">🏃 2x</button>
+                <button id="step-btn" title="Step Frame">⏭ Step</button>
+            </div>
+
+            <div class="timeline-container">
+                <input id="frame-slider" class="timeline" type="range" min="0" value="0" step="1">
+            </div>
+
+            <div class="info-panel">
+                <div class="info-item">
+                    <span class="info-label">Frame:</span>
+                    <span class="info-value" id="frame-info">0/0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Time:</span>
+                    <span class="info-value" id="time-info">0.00s</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Speed:</span>
+                    <span class="info-value" id="speed-info">1.0x</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Players:</span>
+                    <span class="info-value" id="players-info">0</span>
+                </div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item" id="team1-legend">
+                    <div class="legend-color" style="background-color: #CC0000;"></div>
+                    <span>Team 1</span>
+                </div>
+                <div class="legend-item" id="team2-legend">
+                    <div class="legend-color" style="background-color: #C8102E;"></div>
+                    <span>Team 2</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #2E2E38;"></div>
+                    <span>🏒 Puck</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Goal data and state
+        let goalData = [];
+        let currentFrame = 0;
+        let isPlaying = false;
+        let playbackSpeed = 1.0;
+        let animationFrameId = null;
+        let lastFrameTime = 0;
+        let puckTrail = [];
+        let goalFrame = -1;
+
+        // DOM elements
+        const rinkSvg = document.getElementById('rink-svg');
+        const playBtn = document.getElementById('play-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const slowBtn = document.getElementById('slow-btn');
+        const fastBtn = document.getElementById('fast-btn');
+        const stepBtn = document.getElementById('step-btn');
+        const frameSlider = document.getElementById('frame-slider');
+        const frameInfo = document.getElementById('frame-info');
+        const timeInfo = document.getElementById('time-info');
+        const speedInfo = document.getElementById('speed-info');
+        const playersInfo = document.getElementById('players-info');
+        const dataInput = document.getElementById('data-input');
+        const fileInput = document.getElementById('file-input');
+        const loadBtn = document.getElementById('load-btn');
+        const sampleBtn = document.getElementById('sample-btn');
+        const goalIndicator = document.getElementById('goal-indicator');
+        const playerTooltip = document.getElementById('player-tooltip');
+
+        // Constants
+        const fps = 30;
+        const maxTrailLength = 10;
+
+        // Team colors
+        const teamColors = {
+            'CAR': '#CC0000',
+            'FLA': '#C8102E',
+            'TOR': '#003E7E',
+            'MTL': '#AF1E2D',
+            'BOS': '#FFB81C',
+            'NYR': '#0038A8',
+            'DEFAULT1': '#CC0000',
+            'DEFAULT2': '#C8102E'
+        };
+
+        // Sample data for demonstration
+        const sampleData = [
+            { "frame": 1, "time": 0.0, "onIce": { "1": { "id": "1", "x": 1000, "y": 300 }, "player1": { "id": "8475768", "x": 800, "y": 250, "teamAbbrev": "CAR", "sweaterNumber": "17" }, "player2": { "id": "8476234", "x": 1200, "y": 350, "teamAbbrev": "FLA", "sweaterNumber": "16" } } },
+            { "frame": 2, "time": 0.1, "onIce": { "1": { "id": "1", "x": 1100, "y": 320 }, "player1": { "id": "8475768", "x": 900, "y": 280, "teamAbbrev": "CAR", "sweaterNumber": "17" }, "player2": { "id": "8476234", "x": 1300, "y": 320, "teamAbbrev": "FLA", "sweaterNumber": "16" } } },
+            { "frame": 3, "time": 0.2, "onIce": { "1": { "id": "1", "x": 1300, "y": 350 }, "player1": { "id": "8475768", "x": 1100, "y": 320, "teamAbbrev": "CAR", "sweaterNumber": "17" }, "player2": { "id": "8476234", "x": 1400, "y": 300, "teamAbbrev": "FLA", "sweaterNumber": "16" } } },
+            { "frame": 4, "time": 0.3, "onIce": { "1": { "id": "1", "x": 1600, "y": 380 }, "player1": { "id": "8475768", "x": 1300, "y": 360, "teamAbbrev": "CAR", "sweaterNumber": "17" }, "player2": { "id": "8476234", "x": 1500, "y": 280, "teamAbbrev": "FLA", "sweaterNumber": "16" } } },
+            { "frame": 5, "time": 0.4, "onIce": { "1": { "id": "1", "x": 1890, "y": 300 }, "player1": { "id": "8475768", "x": 1500, "y": 400, "teamAbbrev": "CAR", "sweaterNumber": "17" }, "player2": { "id": "8476234", "x": 1600, "y": 260, "teamAbbrev": "FLA", "sweaterNumber": "16" } } }
+        ];
+
+        // Setup the hockey rink with proper NHL dimensions
+        function setupRink() {
+            const rinkElements = `
+                <!-- Ice surface with realistic texture -->
+                <defs>
+                    <pattern id="ice-texture" patternUnits="userSpaceOnUse" width="4" height="4">
+                        <rect width="4" height="4" fill="#f8f9ff"/>
+                        <circle cx="2" cy="2" r="0.1" fill="#e8f0ff" opacity="0.5"/>
+                    </pattern>
+                    <filter id="glow">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                        <feMerge> 
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+                
+                <!-- Ice surface -->
+                <rect x="0" y="0" width="200" height="85" fill="url(#ice-texture)" stroke="#2E2E38" stroke-width="0.3" rx="12.75"/>
+                
+                <!-- Goal lines (red) -->
+                <line x1="11" y1="2" x2="11" y2="83" stroke="#CC0000" stroke-width="0.4"></line>
+                <line x1="189" y1="2" x2="189" y2="83" stroke="#CC0000" stroke-width="0.4"></line>
+                
+                <!-- Blue lines -->
+                <line x1="75" y1="2" x2="75" y2="83" stroke="#0066CC" stroke-width="0.6"></line>
+                <line x1="125" y1="2" x2="125" y2="83" stroke="#0066CC" stroke-width="0.6"></line>
+                
+                <!-- Center line (red) -->
+                <line x1="100" y1="2" x2="100" y2="83" stroke="#CC0000" stroke-width="0.6"></line>
+                
+                <!-- Center circle -->
+                <circle cx="100" cy="42.5" r="15" fill="none" stroke="#0066CC" stroke-width="0.4"></circle>
+                <circle cx="100" cy="42.5" r="0.8" fill="#CC0000"></circle>
+                
+                <!-- Faceoff circles -->
+                <circle cx="31" cy="20.5" r="7.5" fill="none" stroke="#CC0000" stroke-width="0.3"></circle>
+                <circle cx="31" cy="64.5" r="7.5" fill="none" stroke="#CC0000" stroke-width="0.3"></circle>
+                <circle cx="169" cy="20.5" r="7.5" fill="none" stroke="#CC0000" stroke-width="0.3"></circle>
+                <circle cx="169" cy="64.5" r="7.5" fill="none" stroke="#CC0000" stroke-width="0.3"></circle>
+                
+                <!-- Goal creases (light blue) -->
+                <path d="M 11 42.5 A 6 6 0 0 1 11 36.5 L 5 36.5 A 6 6 0 0 0 5 48.5 L 11 48.5 A 6 6 0 0 1 11 42.5" 
+                      fill="rgba(135, 206, 235, 0.3)" stroke="#0066CC" stroke-width="0.3"/>
+                <path d="M 189 42.5 A 6 6 0 0 0 189 36.5 L 195 36.5 A 6 6 0 0 1 195 48.5 L 189 48.5 A 6 6 0 0 0 189 42.5" 
+                      fill="rgba(135, 206, 235, 0.3)" stroke="#0066CC" stroke-width="0.3"/>
+                
+                <!-- Goal nets -->
+                <g id="left-goal">
+                    <rect x="8" y="40" width="3" height="5" fill="none" stroke="#CC0000" stroke-width="0.4"/>
+                    <line x1="8" y1="40" x2="5" y2="37" stroke="#666" stroke-width="0.2"/>
+                    <line x1="8" y1="45" x2="5" y2="48" stroke="#666" stroke-width="0.2"/>
+                    <line x1="11" y1="40" x2="8" y2="37" stroke="#666" stroke-width="0.2"/>
+                    <line x1="11" y1="45" x2="8" y2="48" stroke="#666" stroke-width="0.2"/>
+                    <!-- Net mesh -->
+                    <path d="M 8 40 L 10 41 L 8 42 L 10 43 L 8 44 L 10 45" stroke="#999" stroke-width="0.1" fill="none"/>
+                </g>
+                
+                <g id="right-goal">
+                    <rect x="189" y="40" width="3" height="5" fill="none" stroke="#CC0000" stroke-width="0.4"/>
+                    <line x1="189" y1="40" x2="192" y2="37" stroke="#666" stroke-width="0.2"/>
+                    <line x1="189" y1="45" x2="192" y2="48" stroke="#666" stroke-width="0.2"/>
+                    <line x1="192" y1="40" x2="195" y2="37" stroke="#666" stroke-width="0.2"/>
+                    <line x1="192" y1="45" x2="195" y2="48" stroke="#666" stroke-width="0.2"/>
+                    <!-- Net mesh -->
+                    <path d="M 192 40 L 190 41 L 192 42 L 190 43 L 192 44 L 190 45" stroke="#999" stroke-width="0.1" fill="none"/>
+                </g>
+                
+                <!-- Dynamic elements container -->
+                <g id="puck-trail"></g>
+                <g id="shot-lines"></g>
+                <g id="dynamic-elements"></g>
+            `;
+
+            rinkSvg.innerHTML = rinkElements;
+            frameSlider.max = Math.max(0, goalData.length - 1);
+            updateFrameInfo();
+        }
+
+        // Convert coordinates from data format to SVG viewBox
+        function convertCoordinates(x, y) {
+            // Assuming data coordinates are in NHL coordinate system (feet)
+            // Convert to our 200x85 viewBox
+            const svgX = (x / 2400) * 200; // Assuming max x is ~2400
+            const svgY = (y / 600) * 85;   // Assuming max y is ~600
+
+            return {
+                x: Math.max(0, Math.min(200, svgX)),
+                y: Math.max(0, Math.min(85, svgY))
+            };
+        }
+
+        // Update puck trail
+        function updatePuckTrail(puckX, puckY) {
+            puckTrail.push({ x: puckX, y: puckY, frame: currentFrame });
+            if (puckTrail.length > maxTrailLength) {
+                puckTrail.shift();
+            }
+
+            const trailContainer = document.getElementById('puck-trail');
+            trailContainer.innerHTML = '';
+
+            puckTrail.forEach((point, index) => {
+                if (index === puckTrail.length - 1) return; // Skip current position
+
+                const opacity = (index + 1) / puckTrail.length * 0.5;
+                const size = 0.3 + (index / puckTrail.length) * 0.5;
+
+                const trailPoint = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                trailPoint.setAttribute("cx", point.x);
+                trailPoint.setAttribute("cy", point.y);
+                trailPoint.setAttribute("r", size);
+                trailPoint.setAttribute("fill", "#2E2E38");
+                trailPoint.setAttribute("opacity", opacity);
+                trailPoint.classList.add("puck-trail");
+                trailContainer.appendChild(trailPoint);
+            });
+        }
+
+        // Check for goal (when puck enters goal area)
+        function checkForGoal(puckX, puckY) {
+            const isGoal = (puckX <= 11 && puckY >= 38 && puckY <= 47) ||
+                (puckX >= 189 && puckY >= 38 && puckY <= 47);
+
+            if (isGoal && goalFrame === -1) {
+                goalFrame = currentFrame;
+                showGoalIndicator();
+                flashRink();
+            }
+
+            return isGoal;
+        }
+
+        // Show goal indicator
+        function showGoalIndicator() {
+            goalIndicator.classList.add('show');
+            setTimeout(() => {
+                goalIndicator.classList.remove('show');
+            }, 2000);
+        }
+
+        // Flash rink on goal
+        function flashRink() {
+            const rinkContainer = document.querySelector('.rink-container');
+            rinkContainer.classList.add('goal-flash');
+            setTimeout(() => {
+                rinkContainer.classList.remove('goal-flash');
+            }, 1500);
+        }
+
+        // Update visualization with current frame data
+        function updateVisualization() {
+            if (!goalData.length) return;
+
+            const frameData = goalData[currentFrame];
+            const dynamicElements = document.getElementById('dynamic-elements');
+            const shotLines = document.getElementById('shot-lines');
+
+            // Clear previous elements
+            dynamicElements.innerHTML = '';
+            shotLines.innerHTML = '';
+
+            if (!frameData || !frameData.onIce) return;
+
+            let puckPosition = null;
+            let playerCount = 0;
+
+            // Process entities
+            Object.values(frameData.onIce).forEach(entity => {
+                const coords = convertCoordinates(entity.x || 0, entity.y || 0);
+
+                if (entity.id === "1") {
+                    // Render enhanced puck
+                    puckPosition = coords;
+
+                    // Outer glow
+                    const puckGlow = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    puckGlow.setAttribute("cx", coords.x);
+                    puckGlow.setAttribute("cy", coords.y);
+                    puckGlow.setAttribute("r", "2");
+                    puckGlow.setAttribute("fill", "#2E2E38");
+                    puckGlow.setAttribute("opacity", "0.3");
+                    puckGlow.setAttribute("filter", "url(#glow)");
+                    dynamicElements.appendChild(puckGlow);
+
+                    // Main puck
+                    const puck = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    puck.setAttribute("cx", coords.x);
+                    puck.setAttribute("cy", coords.y);
+                    puck.setAttribute("r", "1.2");
+                    puck.setAttribute("fill", "#2E2E38");
+                    puck.setAttribute("stroke", "#97DFFC");
+                    puck.setAttribute("stroke-width", "0.2");
+                    dynamicElements.appendChild(puck);
+
+                    // Check for goal
+                    checkForGoal(coords.x, coords.y);
+                } else {
+                    // Render enhanced player
+                    playerCount++;
+                    const teamColor = teamColors[entity.teamAbbrev] || teamColors.DEFAULT1;
+
+                    const player = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                    player.setAttribute("class", "player");
+                    player.setAttribute("data-player-id", entity.id);
+                    player.setAttribute("data-team", entity.teamAbbrev || 'Unknown');
+                    player.setAttribute("data-number", entity.sweaterNumber || '?');
+
+                    // Player shadow
+                    const shadow = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    shadow.setAttribute("cx", coords.x + 0.2);
+                    shadow.setAttribute("cy", coords.y + 0.2);
+                    shadow.setAttribute("r", "3");
+                    shadow.setAttribute("fill", "#000000");
+                    shadow.setAttribute("opacity", "0.2");
+                    player.appendChild(shadow);
+
+                    // Player circle
+                    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    circle.setAttribute("cx", coords.x);
+                    circle.setAttribute("cy", coords.y);
+                    circle.setAttribute("r", "3");
+                    circle.setAttribute("fill", teamColor);
+                    circle.setAttribute("stroke", "#FFFFFF");
+                    circle.setAttribute("stroke-width", "0.3");
+                    player.appendChild(circle);
+
+                    // Jersey number
+                    if (entity.sweaterNumber) {
+                        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                        text.setAttribute("x", coords.x);
+                        text.setAttribute("y", coords.y + 0.5);
+                        text.setAttribute("text-anchor", "middle");
+                        text.setAttribute("dominant-baseline", "middle");
+                        text.setAttribute("fill", "#FFFFFF");
+                        text.setAttribute("font-size", "2");
+                        text.setAttribute("font-weight", "bold");
+                        text.textContent = entity.sweaterNumber;
+                        player.appendChild(text);
+                    }
+
+                    // Add hover events
+                    player.addEventListener('mouseenter', (e) => showPlayerTooltip(e, entity));
+                    player.addEventListener('mouseleave', hidePlayerTooltip);
+
+                    dynamicElements.appendChild(player);
+                }
+            });
+
+            // Update puck trail
+            if (puckPosition) {
+                updatePuckTrail(puckPosition.x, puckPosition.y);
+            }
+
+            // Update UI
+            updateFrameInfo();
+            playersInfo.textContent = playerCount;
+        }
+
+        // Show player tooltip
+        function showPlayerTooltip(event, entity) {
+            const tooltip = playerTooltip;
+            const rect = rinkSvg.getBoundingClientRect();
+
+            tooltip.innerHTML = `
+                <strong>${entity.name || `Player ${entity.sweaterNumber || entity.id}`}</strong><br>
+                Team: ${entity.teamAbbrev || 'Unknown'}<br>
+                Number: #${entity.sweaterNumber || 'N/A'}<br>
+                Position: (${Math.round(entity.x || 0)}, ${Math.round(entity.y || 0)})
+            `;
+
+            tooltip.style.left = (event.clientX - rect.left + 10) + 'px';
+            tooltip.style.top = (event.clientY - rect.top - 10) + 'px';
+            tooltip.style.opacity = '1';
+        }
+
+        // Hide player tooltip
+        function hidePlayerTooltip() {
+            playerTooltip.style.opacity = '0';
+        }
+
+        // Update frame information
+        function updateFrameInfo() {
+            const current = currentFrame + 1;
+            const total = goalData.length;
+            const time = goalData[currentFrame]?.time || 0;
+
+            frameInfo.textContent = `${current}/${total}`;
+            timeInfo.textContent = `${time.toFixed(2)}s`;
+            frameSlider.value = currentFrame;
+        }
+
+        // Animation loop
+        function animate(timestamp) {
+            if (!lastFrameTime) lastFrameTime = timestamp;
+
+            const elapsed = timestamp - lastFrameTime;
+            const frameTime = 1000 / fps / playbackSpeed;
+
+            if (elapsed >= frameTime) {
+                currentFrame++;
+                if (currentFrame >= goalData.length) {
+                    currentFrame = goalData.length - 1;
+                    pause();
+                }
+
+                updateVisualization();
+                lastFrameTime = timestamp;
+            }
+
+            if (isPlaying) {
+                animationFrameId = requestAnimationFrame(animate);
+            }
+        }
+
+        // Control functions
+        function play() {
+            if (currentFrame >= goalData.length - 1) {
+                currentFrame = 0;
+            }
+            isPlaying = true;
+            playBtn.innerHTML = "⏸ Pause";
+            lastFrameTime = 0;
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        function pause() {
+            isPlaying = false;
+            playBtn.innerHTML = "▶ Play";
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+        }
+
+        function restart() {
+            pause();
+            currentFrame = 0;
+            goalFrame = -1;
+            puckTrail = [];
+            updateVisualization();
+        }
+
+        function stepFrame() {
+            pause();
+            if (currentFrame < goalData.length - 1) {
+                currentFrame++;
+                updateVisualization();
+            }
+        }
+
+        // Event handlers
+        playBtn.addEventListener('click', () => {
+            if (isPlaying) pause();
+            else play();
+        });
+
+        restartBtn.addEventListener('click', restart);
+
+        stepBtn.addEventListener('click', stepFrame);
+
+        slowBtn.addEventListener('click', () => {
+            playbackSpeed = 0.5;
+            speedInfo.textContent = `${playbackSpeed.toFixed(1)}x`;
+        });
+
+        fastBtn.addEventListener('click', () => {
+            playbackSpeed = 2.0;
+            speedInfo.textContent = `${playbackSpeed.toFixed(1)}x`;
+        });
+
+        frameSlider.addEventListener('input', function () {
+            pause();
+            currentFrame = parseInt(this.value);
+            updateVisualization();
+        });
+
+        // Data loading
+        loadBtn.addEventListener('click', () => {
+            const jsonText = dataInput.value.trim();
+
+            if (jsonText) {
+                try {
+                    goalData = JSON.parse(jsonText);
+                    initializeVisualization();
+                } catch (error) {
+                    alert("Invalid JSON: " + error.message);
+                }
+            } else if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    try {
+                        goalData = JSON.parse(e.target.result);
+                        initializeVisualization();
+                    } catch (error) {
+                        alert("Invalid JSON file: " + error.message);
+                    }
+                };
+
+                reader.readAsText(file);
+            } else {
+                alert("Please provide JSON data or select a file.");
+            }
+        });
+
+        sampleBtn.addEventListener('click', () => {
+            goalData = sampleData;
+            dataInput.value = JSON.stringify(sampleData, null, 2);
+            initializeVisualization();
+        });
+
+        // Initialize visualization
+        function initializeVisualization() {
+            if (goalData && goalData.length > 0) {
+                currentFrame = 0;
+                goalFrame = -1;
+                puckTrail = [];
+                setupRink();
+                updateVisualization();
+                console.log(`Loaded ${goalData.length} frames of goal data`);
+            } else {
+                alert("No valid goal data found.");
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            switch (e.code) {
+                case 'Space':
+                    e.preventDefault();
+                    if (isPlaying) pause();
+                    else play();
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    stepFrame();
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    if (currentFrame > 0) {
+                        pause();
+                        currentFrame--;
+                        updateVisualization();
+                    }
+                    break;
+                case 'KeyR':
+                    e.preventDefault();
+                    restart();
+                    break;
+            }
+        });
+
+        // Initialize
+        setupRink();
+        console.log("Hockey Goal Visualizer initialized. Use 'Load Sample Data' to see a demo!");
+    </script>
+</body>
+
+</html>
